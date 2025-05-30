@@ -1,0 +1,35 @@
+name: news_and_journals
+description: A Flutter app for news, weather, and personal journals.
+publish_to: 'none'
+
+version: 1.0.0+1
+
+environment:
+  sdk: '>=3.0.0 <4.0.0'
+
+dependencies:
+  flutter:
+    sdk: flutter
+
+  cupertino_icons: ^1.0.6
+  sqflite: ^2.3.2
+  path_provider: ^2.1.2
+  path: ^1.9.0
+  intl: ^0.18.0
+  google_fonts: ^6.1.0
+  http: ^1.2.1
+  geolocator: ^11.0.0
+  url_launcher: ^6.2.5
+  firebase_core: ^3.13.1
+  firebase_auth: ^5.5.4
+  cloud_firestore: ^5.6.8
+  rxdart: ^0.28.0
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  
+  flutter_lints: ^3.0.0
+
+flutter:
+  uses-material-design: true
