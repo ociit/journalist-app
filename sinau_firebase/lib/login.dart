@@ -11,11 +11,11 @@ class Login extends StatefulWidget {
 }
 
 class _LoginState extends State<Login> {
-  TextEditingController loginIdentifierController = TextEditingController(); // Mengganti nama variabel agar lebih jelas
-  TextEditingController passwordController = TextEditingController(); // Mengganti nama variabel agar lebih jelas
-  bool _isLoading = false; // State untuk loading indicator
+  TextEditingController loginIdentifierController = TextEditingController();
+  TextEditingController passwordController = TextEditingController();
+  bool _isLoading = false;
 
-    void showErrorSnackbar(String message) {
+  void showErrorSnackbar(String message) {
     if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text(message), backgroundColor: Colors.redAccent),
@@ -29,26 +29,22 @@ class _LoginState extends State<Login> {
 
   @override
   void dispose() {
-    // Selalu dispose controller ketika widget tidak lagi digunakan
     loginIdentifierController.dispose();
     passwordController.dispose();
     super.dispose();
   }
 
-  Future<void> signIn() async { // Mengubah menjadi Future<void> agar lebih jelas
-    // 0. Set loading state menjadi true
-    if(mounted) setState(() => _isLoading = true);
+  Future<void> signIn() async {
+    if (mounted) setState(() => _isLoading = true);
 
-    //! 1. Ambil dan trim input dari controller
     String loginInput = loginIdentifierController.text.trim();
     String password = passwordController.text.trim();
 
-    // Validasi dasar apakah field kosong (opsional tapi baik)
-      if (loginInput.isEmpty || password.isEmpty) {
-        showErrorSnackbar('Email/Username dan Password tidak boleh kosong.');
-        setLoading(false);
-        return;
-      }
+    if (loginInput.isEmpty || password.isEmpty) {
+      showErrorSnackbar('Email/Username dan Password tidak boleh kosong.');
+      setLoading(false);
+      return;
+    }
 
     String? emailToUse;
 
@@ -59,17 +55,15 @@ class _LoginState extends State<Login> {
         emailToUse = loginInput;
       } else {
         final QuerySnapshot userQuery = await FirebaseFirestore.instance
-          .collection('users')
-          .where('username', isEqualTo: loginInput)
-          .limit(1)
-          .get();
+            .collection('users')
+            .where('username', isEqualTo: loginInput)
+            .limit(1)
+            .get();
 
         if (userQuery.docs.isNotEmpty) {
-          // Username ditemukan, ambil emailnya
-          final userData = userQuery.docs.first.data() as Map<String, dynamic>?; // Casting
-          emailToUse = userData?['email'] as String?; // Ambil email, pastikan casting aman
+          final userData = userQuery.docs.first.data() as Map<String, dynamic>?;
+          emailToUse = userData?['email'] as String?;
         } else {
-          // Username tidak ditemukan
           showErrorSnackbar('Username tidak ditemukan.');
           setLoading(false);
           return;
@@ -82,27 +76,22 @@ class _LoginState extends State<Login> {
         return;
       }
 
-
-      //! 2. Lakukan proses sign in
-      UserCredential userCredential = await FirebaseAuth.instance.signInWithEmailAndPassword(
+      await FirebaseAuth.instance.signInWithEmailAndPassword(
         email: emailToUse,
         password: password,
       );
 
-      // Jika login berhasil
-      print("Login Berhasil: ${userCredential.user?.email}");
+      print("Login Berhasil: ${FirebaseAuth.instance.currentUser?.email}");
 
-      // TODO: Navigasi ke halaman berikutnya (misalnya halaman beranda)
-      // Pastikan Anda sudah membuat halaman ini dan mengimpornya
+      // TODO: Navigasi ke halaman berikutnya
       // if (mounted) {
       //   Navigator.pushReplacement(
       //     context,
-      //     MaterialPageRoute(builder: (context) => const HomePage()), // Ganti HomePage dengan halaman Anda
+      //     MaterialPageRoute(builder: (context) => const HomePage()),
       //   );
       // }
 
     } on FirebaseAuthException catch (e) {
-      //! 3. Tangani error spesifik dari Firebase Auth
       String errorMessage;
       if (e.code == 'user-not-found') {
         errorMessage = 'Pengguna dengan email tersebut tidak ditemukan.';
@@ -124,14 +113,12 @@ class _LoginState extends State<Login> {
         print('An unknown Firebase error occurred: ${e.code} - ${e.message}');
       }
 
-      // Tampilkan pesan error menggunakan SnackBar
-      if (mounted) { // Pastikan widget masih terpasang (mounted)
+      if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text(errorMessage)),
         );
       }
     } catch (e) {
-      //! 4. Tangani error umum lainnya
       print('Terjadi kesalahan lain: $e');
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -139,7 +126,6 @@ class _LoginState extends State<Login> {
         );
       }
     } finally {
-      //! 5. Set loading state kembali ke false setelah selesai (baik sukses maupun gagal)
       if (mounted) {
         setState(() {
           _isLoading = false;
@@ -148,41 +134,67 @@ class _LoginState extends State<Login> {
     }
   }
 
-@override
-Widget build(BuildContext context) {
+  @override
+  Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text("Login")),
-      body: Padding(
-        padding: const EdgeInsets.all(20.0),
+      body: SafeArea(
         child: Center(
           child: SingleChildScrollView(
+            padding: const EdgeInsets.symmetric(horizontal: 30.0, vertical: 40.0),
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
-              children: [
+              children: <Widget>[
+                // Logo atau Judul Aplikasi (opsional)
+                const FlutterLogo(size: 100),
+                const SizedBox(height: 40),
+                Text(
+                  'Selamat Datang',
+                  style: Theme.of(context).textTheme.headlineMedium?.copyWith(fontWeight: FontWeight.bold),
+                ),
+                const SizedBox(height: 20),
                 TextField(
-                  controller: loginIdentifierController, // Controller untuk email/username
-                  decoration: const InputDecoration(
-                    hintText: 'Masukkan Email atau Username', // Hint diubah
-                    prefixIcon: Icon(Icons.person_outline),
+                  controller: loginIdentifierController,
+                  keyboardType: TextInputType.text,
+                  decoration: InputDecoration(
+                    labelText: 'Email atau Username',
+                    prefixIcon: const Icon(Icons.person_outline),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(10.0),
+                    ),
                   ),
-                  keyboardType: TextInputType.text, // Bisa text biasa
                 ),
                 const SizedBox(height: 20),
                 TextField(
                   controller: passwordController,
-                  decoration: const InputDecoration(
-                    hintText: 'Masukkan Password',
-                    prefixIcon: Icon(Icons.lock),
-                  ),
                   obscureText: true,
+                  decoration: InputDecoration(
+                    labelText: 'Password',
+                    prefixIcon: const Icon(Icons.lock),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(10.0),
+                    ),
+                  ),
                 ),
                 const SizedBox(height: 30),
                 ElevatedButton(
                   onPressed: _isLoading ? null : signIn,
-                  style: ElevatedButton.styleFrom(minimumSize: const Size(double.infinity, 50)),
+                  style: ElevatedButton.styleFrom(
+                    minimumSize: const Size(double.infinity, 50),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(10.0),
+                    ),
+                    elevation: 3,
+                  ),
                   child: _isLoading
-                      ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2.0))
-                      : const Text("Login"),
+                      ? const SizedBox(
+                          width: 24,
+                          height: 24,
+                          child: CircularProgressIndicator(
+                            color: Colors.white,
+                            strokeWidth: 2.5,
+                          ),
+                        )
+                      : const Text('Login', style: TextStyle(fontSize: 16)),
                 ),
                 const SizedBox(height: 20),
                 TextButton(
@@ -192,7 +204,7 @@ Widget build(BuildContext context) {
                       MaterialPageRoute(builder: (context) => const RegisterPage()),
                     );
                   },
-                  child: const Text("Belum punya akun? Daftar di sini"),
+                  child: const Text('Belum punya akun? Daftar di sini', style: TextStyle(fontSize: 14)),
                 ),
               ],
             ),

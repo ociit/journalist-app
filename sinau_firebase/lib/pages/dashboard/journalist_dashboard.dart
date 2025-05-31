@@ -3,13 +3,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:sinau_firebase/pages/profile_page.dart';
 import 'package:sinau_firebase/pages/my_journals_page.dart';
-import 'package:sinau_firebase/pages/my_journals_page.dart';
 import 'package:sinau_firebase/pages/published_journals_page.dart';
-
-// Nanti kita akan buat halaman-halaman ini:
-// import 'profile_page.dart';
-// import 'my_journals_page.dart';
-// import 'published_journals_page.dart';
 
 class JournalistDashboard extends StatefulWidget {
   final DocumentSnapshot<Map<String, dynamic>> firestoreUserDocument;
@@ -21,36 +15,33 @@ class JournalistDashboard extends StatefulWidget {
 }
 
 class _JournalistDashboardState extends State<JournalistDashboard> {
-  int _selectedIndex = 0; // Untuk BottomNavigationBar
+  int _selectedIndex = 0; // Default ke tab pertama (Jurnal Saya)
 
-  // User data dari Firestore
   late Map<String, dynamic> userData;
   late String displayName;
   late String username;
 
-  // User dari Firebase Auth (untuk logout misalnya)
   final User? authUser = FirebaseAuth.instance.currentUser;
 
   @override
   void initState() {
     super.initState();
     userData = widget.firestoreUserDocument.data()!;
-    userData = widget.firestoreUserDocument.data()!;
-    username = userData['username'] as String? ?? 'Pengguna Anonim'; // Ambil username
+    username = userData['username'] as String? ?? 'Pengguna Anonim';
     String email = userData['email'] as String? ?? authUser?.email ?? 'Pengguna';
-    displayName = username; // Atau kombinasi, sesuai preferensi
+    displayName = username; // Prioritaskan username untuk AppBar title
   }
 
-  // Daftar halaman untuk Journalist
+  // Mengubah urutan halaman: Jurnal Saya, Terpublish, Profil
   List<Widget> _journalistPages() {
     if (authUser == null) {
-      return [Center(child: Text("Error: Pengguna tidak ditemukan."))];
+      return [const Center(child: Text("Error: Pengguna tidak ditemukan."))];
     }
-
+    String currentRole = userData['role'] as String? ?? 'Tidak Diketahui';
     return [
-      ProfilePage(userData: userData), // <-- Gunakan ProfilePage di sini
-      MyJournalsPage(currentUser: authUser!, currentUsername: username), // Kirim user dan username
-      const PublishedJournalsPage(),
+      MyJournalsPage(currentUser: authUser!, currentUsername: username), // Indeks 0
+      PublishedJournalsPage(currentUserRole: currentRole),              // Indeks 1
+      ProfilePage(userData: userData),                                   // Indeks 2 (Paling Kanan)
     ];
   }
 
@@ -63,20 +54,25 @@ class _JournalistDashboardState extends State<JournalistDashboard> {
   Future<void> _performSignOut() async {
     try {
       await FirebaseAuth.instance.signOut();
-      // Wrapper akan menangani navigasi
+      // Wrapper akan menangani navigasi ke halaman login
     } catch (e) {
       print("Error signing out from dashboard: $e");
-      if(mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Gagal logout: $e")));
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text("Gagal logout: $e"), backgroundColor: Colors.redAccent));
+      }
     }
   }
 
-  Future<void> _showLogoutConfirmationDialog() async {return showDialog<void>(
+  Future<void> _showLogoutConfirmationDialog() async {
+    return showDialog<void>(
       context: context,
       barrierDismissible: false,
       builder: (BuildContext dialogContext) {
         return AlertDialog(
           title: const Text('Konfirmasi Logout'),
-          content: const Text('Apakah Anda yakin ingin keluar?'),
+          content: const Text('Apakah Anda yakin ingin keluar dari akun ini?'),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15.0)),
           actions: <Widget>[
             TextButton(
               child: const Text('Batal'),
@@ -95,12 +91,16 @@ class _JournalistDashboardState extends State<JournalistDashboard> {
       },
     );
   }
-  
+
   @override
   Widget build(BuildContext context) {
+    final ThemeData theme = Theme.of(context);
+    final List<Widget> pages = _journalistPages();
+
     return Scaffold(
       appBar: AppBar(
-        title: Text('Dasbor Journalist: $displayName'),
+        title: Text('$displayName, Journalist!'),
+        backgroundColor: theme.colorScheme.primaryContainer, // Contoh penggunaan warna tema
         actions: [
           IconButton(
             icon: const Icon(Icons.logout),
@@ -111,17 +111,34 @@ class _JournalistDashboardState extends State<JournalistDashboard> {
       ),
       body: IndexedStack(
         index: _selectedIndex,
-        children: _journalistPages(),
+        children: pages,
       ),
       bottomNavigationBar: BottomNavigationBar(
         items: const <BottomNavigationBarItem>[
-          BottomNavigationBarItem(icon: Icon(Icons.person), label: 'Profil'),
-          BottomNavigationBarItem(icon: Icon(Icons.article), label: 'Jurnal Saya'),
-          BottomNavigationBarItem(icon: Icon(Icons.public), label: 'Terpublish'), // Label sudah sesuai
+          BottomNavigationBarItem(
+            icon: Icon(Icons.article_outlined),
+            activeIcon: Icon(Icons.article), // Ikon berbeda saat aktif
+            label: 'Jurnal Saya',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.public_outlined),
+            activeIcon: Icon(Icons.public),
+            label: 'Terpublish',
+          ),
+          BottomNavigationBarItem( // Profil paling kanan
+            icon: Icon(Icons.person_outline),
+            activeIcon: Icon(Icons.person),
+            label: 'Profil',
+          ),
         ],
         currentIndex: _selectedIndex,
         onTap: _onItemTapped,
-        type: BottomNavigationBarType.fixed,
+        type: BottomNavigationBarType.fixed, // Label selalu terlihat
+        backgroundColor: theme.colorScheme.surface, // Warna latar BottomNav
+        selectedItemColor: theme.colorScheme.primary,
+        unselectedItemColor: Colors.grey[600],
+        showUnselectedLabels: true, // Bisa diatur true atau false
+        elevation: 8.0, // Menambah sedikit shadow
       ),
     );
   }

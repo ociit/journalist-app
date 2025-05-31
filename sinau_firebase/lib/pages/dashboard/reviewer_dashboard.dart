@@ -1,10 +1,10 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
-
-import 'package:sinau_firebase/pages/profile_page.dart'; // Bisa digunakan ulang
-import 'package:sinau_firebase/pages/journals_in_review_page.dart'; // Akan kita buat
-import 'package:sinau_firebase/pages/published_journals_page.dart'; // Sudah ada, bisa digunakan ulang
+import 'package:sinau_firebase/pages/profile_page.dart';
+import 'package:sinau_firebase/pages/journals_in_review_page.dart';
+import 'package:sinau_firebase/pages/published_journals_page.dart';
+import 'package:sinau_firebase/pages/rejected_journals_page.dart';
 
 class ReviewerDashboard extends StatefulWidget {
   final DocumentSnapshot<Map<String, dynamic>> firestoreUserDocument;
@@ -16,7 +16,7 @@ class ReviewerDashboard extends StatefulWidget {
 }
 
 class _ReviewerDashboardState extends State<ReviewerDashboard> {
-  int _selectedIndex = 0;
+  int _selectedIndex = 0; // Default ke tab pertama (Review Jurnal)
 
   late Map<String, dynamic> userData;
   late String displayName;
@@ -29,19 +29,20 @@ class _ReviewerDashboardState extends State<ReviewerDashboard> {
     userData = widget.firestoreUserDocument.data()!;
     String? username = userData['username'] as String?;
     String email = userData['email'] as String? ?? authUser?.email ?? 'Pengguna';
-    displayName = username ?? email; // Prioritaskan username untuk tampilan nama
+    displayName = username ?? email;
   }
 
-  // Daftar halaman untuk Reviewer
+  // Mengubah urutan halaman: Review Jurnal, Terpublish, Ditolak, Profil
   List<Widget> _reviewerPages() {
     if (authUser == null) {
-      // Kondisi darurat, seharusnya tidak terjadi jika Wrapper bekerja
       return [const Center(child: Text("Error: Pengguna Reviewer tidak ditemukan."))];
     }
+    String currentRole = userData['role'] as String? ?? 'Tidak Diketahui';
     return [
-      ProfilePage(userData: userData), // Menggunakan ulang ProfilePage
-      JournalsInReviewPage(currentUser: authUser!), // Halaman baru untuk Reviewer
-      const PublishedJournalsPage(), // Menggunakan ulang PublishedJournalsPage
+      JournalsInReviewPage(currentUser: authUser!),           // Indeks 0
+      PublishedJournalsPage(currentUserRole: currentRole), // Indeks 1
+      const RejectedJournalsPage(),                          // Indeks 2
+      ProfilePage(userData: userData),                       // Indeks 3 (Paling Kanan)
     ];
   }
 
@@ -51,25 +52,27 @@ class _ReviewerDashboardState extends State<ReviewerDashboard> {
     });
   }
 
-  // --- Fungsi Logout (Salin dari JournalistDashboard atau Homepage) ---
   Future<void> _performSignOut() async {
     try {
       await FirebaseAuth.instance.signOut();
-      // Wrapper akan menangani navigasi
     } catch (e) {
       print("Error signing out from ReviewerDashboard: $e");
-      if(mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Gagal logout: $e")));
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text("Gagal logout: $e"), backgroundColor: Colors.redAccent));
+      }
     }
   }
 
   Future<void> _showLogoutConfirmationDialog() async {
-     return showDialog<void>(
+    return showDialog<void>(
       context: context,
       barrierDismissible: false,
       builder: (BuildContext dialogContext) {
         return AlertDialog(
           title: const Text('Konfirmasi Logout'),
-          content: const Text('Apakah Anda yakin ingin keluar?'),
+          content: const Text('Apakah Anda yakin ingin keluar dari akun ini?'),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15.0)),
           actions: <Widget>[
             TextButton(
               child: const Text('Batal'),
@@ -88,13 +91,16 @@ class _ReviewerDashboardState extends State<ReviewerDashboard> {
       },
     );
   }
-  // ------------------------------------------------------------------
 
   @override
   Widget build(BuildContext context) {
+    final ThemeData theme = Theme.of(context);
+    final List<Widget> pages = _reviewerPages();
+
     return Scaffold(
       appBar: AppBar(
-        title: Text('Dasbor Reviewer: $displayName'),
+        title: Text('$displayName, Reviewer!'),
+        backgroundColor: theme.colorScheme.secondaryContainer, // Contoh warna tema berbeda
         actions: [
           IconButton(
             icon: const Icon(Icons.logout),
@@ -103,28 +109,41 @@ class _ReviewerDashboardState extends State<ReviewerDashboard> {
           ),
         ],
       ),
-      body: IndexedStack( // Gunakan IndexedStack agar state halaman tetap terjaga
+      body: IndexedStack(
         index: _selectedIndex,
-        children: _reviewerPages(),
+        children: pages,
       ),
       bottomNavigationBar: BottomNavigationBar(
         items: const <BottomNavigationBarItem>[
           BottomNavigationBarItem(
-            icon: Icon(Icons.account_circle), // Ikon bisa disesuaikan
-            label: 'Profil',
+            icon: Icon(Icons.rate_review_outlined),
+            activeIcon: Icon(Icons.rate_review),
+            label: 'Review',
           ),
           BottomNavigationBarItem(
-            icon: Icon(Icons.rate_review_outlined), // Ikon untuk review
-            label: 'Review Jurnal',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.public),
+            icon: Icon(Icons.public_outlined),
+            activeIcon: Icon(Icons.public),
             label: 'Terpublish',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.unpublished_outlined),
+            activeIcon: Icon(Icons.unpublished),
+            label: 'Ditolak',
+          ),
+          BottomNavigationBarItem( // Profil paling kanan
+            icon: Icon(Icons.account_circle_outlined),
+            activeIcon: Icon(Icons.account_circle),
+            label: 'Profil',
           ),
         ],
         currentIndex: _selectedIndex,
         onTap: _onItemTapped,
-        type: BottomNavigationBarType.fixed, // Agar label selalu terlihat
+        type: BottomNavigationBarType.fixed,
+        backgroundColor: theme.colorScheme.surface,
+        selectedItemColor: theme.colorScheme.secondary, // Mungkin ingin warna berbeda untuk Reviewer
+        unselectedItemColor: Colors.grey[600],
+        showUnselectedLabels: true,
+        elevation: 8.0,
       ),
     );
   }
