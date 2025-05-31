@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "90787169842",
+    "project_id": "sinaufirebase-87fee",
+    "storage_bucket": "sinaufirebase-87fee.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:90787169842:android:a30184a825c361fc7f5e2b",
+        "android_client_info": {
+          "package_name": "com.example.sinau_firebase"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAAHgBTfgSoHLtr8dP4961AIVzPd8I2rRg"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
