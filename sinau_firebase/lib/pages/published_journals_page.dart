@@ -56,6 +56,13 @@ class PublishedJournalsPage extends StatelessWidget {
               .map((doc) => JournalModel.fromFirestore(doc))
               .toList();
 
+          if (snapshot.hasData) {
+            print("JOURNALS_IN_REVIEW_DEBUG: Jumlah dokumen 'in review' dari Firestore: ${snapshot.data!.docs.length}"); // DEBUG
+            snapshot.data!.docs.forEach((doc) {
+              print("JOURNALS_IN_REVIEW_DEBUG: Data Dokumen 'in review': ${doc.data()}"); // DEBUG
+            });
+          }
+
           return ListView.builder(
             padding: const EdgeInsets.all(8.0), // Tambahkan padding keseluruhan
             itemCount: publishedJournals.length,
