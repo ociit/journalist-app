@@ -87,6 +87,7 @@ class _HomepageState extends State<Homepage> {
               }
               if (!snapshot.hasData || !snapshot.data!.exists) {
                 return Scaffold(
+                  backgroundColor: Colors.white,
                   appBar: AppBar(title: const Text("Profil Tidak Lengkap")),
                   body: Center(
                     child: Padding(

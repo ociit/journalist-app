@@ -4,6 +4,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:sinau_firebase/models/journal_model.dart'; // Pastikan path ini benar
 import 'package:sinau_firebase/pages/journal_detail_page.dart'; // Untuk navigasi ke detail
 import 'package:sinau_firebase/utils/time_utils.dart'; // Pastikan path ini benar
+import 'package:sinau_firebase/utils/custom_notification_utils.dart';
 
 class JournalsInReviewPage extends StatefulWidget {
   final User currentUser; // Reviewer yang sedang login
@@ -36,19 +37,11 @@ class _JournalsInReviewPageState extends State<JournalsInReviewPage> {
     try {
       await FirebaseFirestore.instance.collection('journals').doc(journalId).update(dataToUpdate);
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-              content: Text('Status jurnal berhasil diubah menjadi "$newStatus".'),
-              backgroundColor: Colors.green),
-        );
+        TopNotification.show(context, 'Status jurnal berhasil diubah menjadi "$newStatus".', type: NotificationType.success);
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-              content: Text('Gagal mengubah status jurnal: $e'),
-              backgroundColor: Colors.redAccent),
-        );
+        TopNotification.show(context, 'Gagal mengubah status jurnal: $e', type: NotificationType.error);
         print("Error updating journal status: $e");
       }
     } finally {
@@ -171,6 +164,7 @@ class _JournalsInReviewPageState extends State<JournalsInReviewPage> {
   Widget build(BuildContext context) {
     final ThemeData theme = Theme.of(context);
     return Scaffold(
+      backgroundColor: Colors.white,
       body: StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
         stream: FirebaseFirestore.instance
             .collection('journals')

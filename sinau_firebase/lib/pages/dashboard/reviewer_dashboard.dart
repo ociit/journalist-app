@@ -1,10 +1,12 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:sinau_firebase/pages/profile_page.dart';
 import 'package:sinau_firebase/pages/journals_in_review_page.dart';
 import 'package:sinau_firebase/pages/published_journals_page.dart';
 import 'package:sinau_firebase/pages/rejected_journals_page.dart';
+import 'package:sinau_firebase/utils/custom_notification_utils.dart';
 
 class ReviewerDashboard extends StatefulWidget {
   final DocumentSnapshot<Map<String, dynamic>> firestoreUserDocument;
@@ -42,7 +44,7 @@ class _ReviewerDashboardState extends State<ReviewerDashboard> {
       JournalsInReviewPage(currentUser: authUser!),           // Indeks 0
       PublishedJournalsPage(currentUserRole: currentRole), // Indeks 1
       const RejectedJournalsPage(),                          // Indeks 2
-      ProfilePage(userData: userData),                       // Indeks 3 (Paling Kanan)
+      ProfilePage(initialUserData: userData),                       // Indeks 3 (Paling Kanan)
     ];
   }
 
@@ -58,8 +60,7 @@ class _ReviewerDashboardState extends State<ReviewerDashboard> {
     } catch (e) {
       print("Error signing out from ReviewerDashboard: $e");
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text("Gagal logout: $e"), backgroundColor: Colors.redAccent));
+        TopNotification.show(context, 'Gagal logout: $e', type: NotificationType.error);
       }
     }
   }
@@ -98,6 +99,7 @@ class _ReviewerDashboardState extends State<ReviewerDashboard> {
     final List<Widget> pages = _reviewerPages();
 
     return Scaffold(
+      backgroundColor: Colors.white,
       appBar: AppBar(
         title: Text('$displayName, Reviewer!'),
         backgroundColor: theme.colorScheme.secondaryContainer, // Contoh warna tema berbeda

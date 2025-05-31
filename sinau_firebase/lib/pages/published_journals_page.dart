@@ -3,6 +3,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:sinau_firebase/models/journal_model.dart';
 import 'package:sinau_firebase/pages/journal_detail_page.dart';
 import 'package:sinau_firebase/utils/time_utils.dart'; // Pastikan path ini benar
+import 'package:sinau_firebase/utils/custom_notification_utils.dart';
 
 class PublishedJournalsPage extends StatelessWidget {
   final String currentUserRole;
@@ -35,13 +36,9 @@ class PublishedJournalsPage extends StatelessWidget {
     if (confirmDelete == true) {
       try {
         await FirebaseFirestore.instance.collection('journals').doc(journalId).delete();
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Jurnal berhasil dihapus permanen.'), backgroundColor: Colors.green),
-        );
+        TopNotification.show(context, 'Jurnal berhasil dihapus permanen.', type: NotificationType.success);
       } catch (e) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Gagal menghapus jurnal: $e'), backgroundColor: Colors.redAccent),
-        );
+        TopNotification.show(context, 'Gagal menghapus jurnal: $e', type: NotificationType.error);
       }
     }
   }
@@ -50,6 +47,7 @@ class PublishedJournalsPage extends StatelessWidget {
   Widget build(BuildContext context) {
     final ThemeData theme = Theme.of(context);
     return Scaffold(
+      backgroundColor: Colors.white,
       // AppBar biasanya sudah ada di dasbor induk
       body: StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
         stream: FirebaseFirestore.instance

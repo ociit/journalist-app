@@ -1,62 +1,43 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-// import 'package:cloud_firestore/cloud_firestore.dart'; // Tidak digunakan langsung di UI ini, data via props
+import 'package:cloud_firestore/cloud_firestore.dart'; // Diperlukan untuk StreamBuilder
+import 'package:sinau_firebase/pages/edit_profile_page.dart';
+import 'package:sinau_firebase/utils/custom_notification_utils.dart';
 
 class ProfilePage extends StatefulWidget {
-  final Map<String, dynamic> userData;
+  // widget.userData (Map<String, dynamic>) masih berguna untuk dikirim ke EditProfilePage
+  // sebagai data awal sebelum diedit.
+  final Map<String, dynamic> initialUserData;
 
-  const ProfilePage({super.key, required this.userData});
+  const ProfilePage({super.key, required this.initialUserData});
 
   @override
   State<ProfilePage> createState() => _ProfilePageState();
 }
 
 class _ProfilePageState extends State<ProfilePage> {
-  late String username;
-  late String email;
-  late String role;
   bool _isPasswordResetLoading = false;
+  final User? currentUser = FirebaseAuth.instance.currentUser;
 
-  @override
-  void initState() {
-    super.initState();
-    username = widget.userData['username'] as String? ?? 'Belum diatur';
-    email = widget.userData['email'] as String? ?? 'Tidak tersedia';
-    role = widget.userData['role'] as String? ?? 'Tidak diketahui';
-  }
-
-  Future<void> _changePassword() async {
-    if (email.isEmpty) {
+  // Fungsi _changePassword tidak perlu banyak perubahan,
+  // hanya pastikan email diambil dari sumber yang tepat (snapshot atau currentUser)
+  Future<void> _changePassword(String currentEmail) async {
+    if (currentEmail.isEmpty) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-              content: Text('Email pengguna tidak ditemukan untuk reset password.'),
-              backgroundColor: Colors.redAccent),
-        );
+        TopNotification.show(context, 'Email pengguna tidak ditemukan untuk reset password.', type: NotificationType.error);
       }
       return;
     }
-
     if (mounted) setState(() => _isPasswordResetLoading = true);
-
     try {
-      await FirebaseAuth.instance.sendPasswordResetEmail(email: email);
+      await FirebaseAuth.instance.sendPasswordResetEmail(email: currentEmail);
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-              content: Text('Email reset password telah dikirim ke $email'),
-              backgroundColor: Colors.green),
-        );
+        TopNotification.show(context, 'Email reset password telah dikirim ke $currentEmail', type: NotificationType.success);
       }
     } catch (error) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-              content: Text('Gagal mengirim email reset password: $error'),
-              backgroundColor: Colors.redAccent),
-        );
+        TopNotification.show(context, 'Gagal mengirim email reset password: $error', type: NotificationType.error);
       }
-      print("Error sending password reset email: $error");
     } finally {
       if (mounted) setState(() => _isPasswordResetLoading = false);
     }
@@ -86,93 +67,142 @@ class _ProfilePageState extends State<ProfilePage> {
   @override
   Widget build(BuildContext context) {
     final ThemeData theme = Theme.of(context);
+
+    if (currentUser == null) {
+      // Seharusnya tidak terjadi jika Wrapper bekerja dengan benar
+      return const Scaffold(body: Center(child: Text("Pengguna tidak login.")));
+    }
+
     return Scaffold(
-      // AppBar biasanya sudah ada di dasbor, jadi di sini tidak perlu jika terintegrasi
-      // appBar: AppBar(title: const Text('Profil Saya')),
+      backgroundColor: Colors.white,
       body: SafeArea(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.all(20.0),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch, // Membuat tombol selebar mungkin
-            children: <Widget>[
-              Center(
+        child: StreamBuilder<DocumentSnapshot<Map<String, dynamic>>>(
+          stream: FirebaseFirestore.instance.collection('users').doc(currentUser!.uid).snapshots(),
+          builder: (context, snapshot) {
+            if (snapshot.connectionState == ConnectionState.waiting) {
+              return const Center(child: CircularProgressIndicator());
+            }
+            if (snapshot.hasError) {
+              print("Error fetching profile data: ${snapshot.error}");
+              return Center(child: Text("Gagal memuat data profil: ${snapshot.error}"));
+            }
+            if (!snapshot.hasData || !snapshot.data!.exists) {
+              return Center(
                 child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    CircleAvatar(
-                      radius: 60,
-                      backgroundColor: theme.colorScheme.primaryContainer,
-                      child: Icon(
-                        Icons.person,
-                        size: 60,
-                        color: theme.colorScheme.onPrimaryContainer,
-                      ),
-                      // TODO: Implement image picker and display profile image
-                    ),
-                    const SizedBox(height: 16),
-                    Text(
-                      username,
-                      style: theme.textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.bold),
-                      textAlign: TextAlign.center,
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      role,
-                      style: theme.textTheme.titleMedium?.copyWith(color: theme.colorScheme.secondary),
-                      textAlign: TextAlign.center,
-                    ),
+                    const Text("Data profil tidak ditemukan."),
+                    Text("Email: ${currentUser?.email ?? 'N/A'}"),
                   ],
-                ),
-              ),
-              const SizedBox(height: 30),
-              _buildInfoCard(
-                icon: Icons.email_outlined,
-                title: 'Email',
-                subtitle: email,
-              ),
-              _buildInfoCard(
-                icon: Icons.badge_outlined,
-                title: 'Peran',
-                subtitle: role,
-              ),
-              const Divider(height: 30, thickness: 1),
-              ElevatedButton.icon(
-                icon: _isPasswordResetLoading
-                    ? const SizedBox(
-                        width: 20,
-                        height: 20,
-                        child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
-                    : const Icon(Icons.lock_reset_outlined),
-                label: Text(_isPasswordResetLoading ? 'Mengirim...' : 'Ubah Password'),
-                onPressed: _isPasswordResetLoading ? null : _changePassword,
-                style: ElevatedButton.styleFrom(
-                  padding: const EdgeInsets.symmetric(vertical: 15),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12.0),
+                )
+              );
+            }
+
+            // Data pengguna terbaru dari Firestore
+            final Map<String, dynamic> currentProfileData = snapshot.data!.data()!;
+            final String username = currentProfileData['username'] as String? ?? 'Belum diatur';
+            final String email = currentProfileData['email'] as String? ?? currentUser!.email ?? 'Tidak tersedia';
+            final String role = currentProfileData['role'] as String? ?? 'Tidak diketahui';
+
+            return SingleChildScrollView(
+              padding: const EdgeInsets.all(20.0),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: <Widget>[
+                  Center(
+                    child: Column(
+                      children: [
+                        CircleAvatar(
+                          radius: 60,
+                          backgroundColor: theme.colorScheme.primaryContainer,
+                          child: Icon(
+                            Icons.person,
+                            size: 60,
+                            color: theme.colorScheme.onPrimaryContainer,
+                          ),
+                          // TODO: Implement image picker and display profile image
+                        ),
+                        const SizedBox(height: 16),
+                        Text(
+                          username,
+                          style: theme.textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.bold),
+                          textAlign: TextAlign.center,
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          role,
+                          style: theme.textTheme.titleMedium?.copyWith(color: theme.colorScheme.secondary),
+                          textAlign: TextAlign.center,
+                        ),
+                      ],
+                    ),
                   ),
-                  elevation: 3,
-                ),
-              ),
-              const SizedBox(height: 12),
-              // Placeholder untuk Tombol Edit Profil
-              OutlinedButton.icon(
-                icon: const Icon(Icons.edit_outlined),
-                label: const Text('Edit Profil'),
-                onPressed: () {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('Fitur Edit Profil belum diimplementasikan.')),
-                  );
-                  // TODO: Navigasi ke halaman edit profil
-                },
-                style: OutlinedButton.styleFrom(
-                  padding: const EdgeInsets.symmetric(vertical: 15),
-                  side: BorderSide(color: theme.colorScheme.primary),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12.0),
+                  const SizedBox(height: 30),
+                  _buildInfoCard(
+                    icon: Icons.email_outlined,
+                    title: 'Email',
+                    subtitle: email,
                   ),
-                ),
+                  _buildInfoCard(
+                    icon: Icons.badge_outlined,
+                    title: 'Peran',
+                    subtitle: role,
+                  ),
+                  const Divider(height: 30, thickness: 1),
+                  ElevatedButton.icon(
+                    icon: _isPasswordResetLoading
+                        ? const SizedBox(
+                            width: 20,
+                            height: 20,
+                            child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                        : const Icon(Icons.lock_reset_outlined),
+                    label: Text(_isPasswordResetLoading ? 'Mengirim...' : 'Ubah Password'),
+                    onPressed: _isPasswordResetLoading ? null : () => _changePassword(email),
+                    style: ElevatedButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(vertical: 15),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12.0),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  OutlinedButton.icon(
+                    icon: const Icon(Icons.edit_outlined),
+                    label: const Text('Edit Profil'),
+                    onPressed: () async {
+                      // Navigasi ke EditProfilePage
+                      // widget.initialUserData bisa digunakan di sini jika EditProfilePage membutuhkannya
+                      // untuk perbandingan nilai awal, atau EditProfilePage bisa mengambil datanya sendiri.
+                      // Untuk konsistensi, kita teruskan data yang baru saja kita dapat dari stream.
+                      final result = await Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => EditProfilePage(
+                            currentUser: currentUser!,
+                            userData: currentProfileData, // Kirim data terbaru dari stream
+                          ),
+                        ),
+                      );
+                      // Karena ProfilePage sekarang menggunakan StreamBuilder,
+                      // ia akan otomatis refresh jika data di Firestore berubah.
+                      // Pesan Snackbar di sini menjadi kurang krusial untuk refresh,
+                      // tapi bisa tetap ada untuk feedback.
+                      if (result == true && mounted) {
+                        TopNotification.show(context, 'Perubahan profil mungkin sedang diproses.', type: NotificationType.info);
+                      }
+                    },
+                    style: OutlinedButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(vertical: 15),
+                      side: BorderSide(color: theme.colorScheme.primary),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12.0),
+                      ),
+                    ),
+                  ),
+                ],
               ),
-            ],
-          ),
+            );
+          },
         ),
       ),
     );

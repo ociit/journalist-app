@@ -137,6 +137,7 @@ class _LoginState extends State<Login> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: Colors.white,
       body: SafeArea(
         child: Center(
           child: SingleChildScrollView(
@@ -144,8 +145,11 @@ class _LoginState extends State<Login> {
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: <Widget>[
-                // Logo atau Judul Aplikasi (opsional)
-                const FlutterLogo(size: 100),
+                Image.asset(
+                  'assets/images/logo.png',
+                  width: 120,
+                  height: 120,
+                ),
                 const SizedBox(height: 40),
                 Text(
                   'Selamat Datang',

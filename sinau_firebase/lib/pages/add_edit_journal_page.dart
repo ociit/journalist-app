@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:sinau_firebase/models/journal_model.dart'; // Pastikan path ini benar
+import 'package:sinau_firebase/utils/custom_notification_utils.dart';
 
 class AddEditJournalPage extends StatefulWidget {
   final User currentUser;
@@ -33,13 +34,13 @@ class _AddEditJournalPageState extends State<AddEditJournalPage> {
     super.initState();
     _titleController = TextEditingController(text: widget.journalToEdit?.title ?? '');
     _contentController = TextEditingController(text: widget.journalToEdit?.content ?? '');
-    // Jika mengedit jurnal yang sudah ada dan statusnya bukan salah satu dari opsi Journalist,
-    // maka jangan set _selectedStatus agar dropdown menampilkan hintText.
-    // Namun, Journalist hanya bisa mengubah ke 'created' atau 'in review'.
-    if (widget.journalToEdit != null && _journalistStatusOptions.contains(widget.journalToEdit!.status)) {
-      _selectedStatus = widget.journalToEdit!.status;
+    if (widget.journalToEdit != null) {
+        // Jika edit, set status ke status jurnal yang ada jika valid, jika tidak, default
+        _selectedStatus = _journalistStatusOptions.contains(widget.journalToEdit!.status)
+            ? widget.journalToEdit!.status
+            : _journalistStatusOptions.first; // atau biarkan null jika ingin validasi saat simpan
     } else {
-      _selectedStatus = _journalistStatusOptions.first; // Default ke 'created' untuk jurnal baru
+      _selectedStatus = _journalistStatusOptions.first; // Default 'created' untuk jurnal baru
     }
   }
 
@@ -54,10 +55,8 @@ class _AddEditJournalPageState extends State<AddEditJournalPage> {
     if (!_formKey.currentState!.validate()) {
       return;
     }
-    if (_selectedStatus == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Silakan pilih status jurnal.'), backgroundColor: Colors.redAccent),
-      );
+    if (_selectedStatus == null) { // Seharusnya tidak terjadi jika ada default, tapi jaga-jaga
+      TopNotification.show(context, 'Silakan pilih status jurnal.', type: NotificationType.warning);
       return;
     }
 
@@ -68,7 +67,6 @@ class _AddEditJournalPageState extends State<AddEditJournalPage> {
 
     try {
       if (widget.journalToEdit == null) {
-        // Membuat jurnal baru
         await FirebaseFirestore.instance.collection('journals').add({
           'title': title,
           'content': content,
@@ -77,37 +75,28 @@ class _AddEditJournalPageState extends State<AddEditJournalPage> {
           'status': _selectedStatus!,
           'createdAt': Timestamp.now(),
           'updatedAt': Timestamp.now(),
-          'publishedAt': null, // Default null
-          'reviewedBy': null,  // Default null
+          'publishedAt': null,
+          'reviewedBy': null,
         });
         if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Jurnal berhasil dibuat!'), backgroundColor: Colors.green),
-          );
+          TopNotification.show(context, 'Jurnal berhasil dibuat!', type: NotificationType.success);
         }
       } else {
-        // Mengedit jurnal yang sudah ada
         Map<String, dynamic> dataToUpdate = {
           'title': title,
           'content': content,
           'status': _selectedStatus!,
           'updatedAt': Timestamp.now(),
         };
-        // Hanya update field yang relevan, jangan timpa publishedAt atau reviewedBy jika sudah ada
-        // kecuali ada logika khusus.
         await FirebaseFirestore.instance.collection('journals').doc(widget.journalToEdit!.id).update(dataToUpdate);
         if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Jurnal berhasil diperbarui!'), backgroundColor: Colors.green),
-          );
+          TopNotification.show(context, 'Jurnal berhasil diperbarui!', type: NotificationType.success);
         }
       }
       if (mounted) Navigator.of(context).pop();
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Gagal menyimpan jurnal: $e'), backgroundColor: Colors.redAccent),
-        );
+        TopNotification.show(context, 'Gagal menyimpan jurnal: $e', type: NotificationType.error);
         print("Error saving journal: $e");
       }
     } finally {
@@ -120,69 +109,75 @@ class _AddEditJournalPageState extends State<AddEditJournalPage> {
     final ThemeData theme = Theme.of(context);
     return Scaffold(
       appBar: AppBar(
-        title: Text(widget.journalToEdit == null ? 'Tulis Jurnal Baru' : 'Edit Jurnal'),
-        backgroundColor: theme.colorScheme.surface, // Atau primaryContainer
-        elevation: 1.0,
+        title: Text(widget.journalToEdit == null ? 'Tulis Jurnal Baru' : 'Edit Jurnal "${widget.journalToEdit!.title}"', overflow: TextOverflow.ellipsis),
+        backgroundColor: theme.colorScheme.surface,
+        elevation: 2.0, // Sedikit shadow untuk appbar
+        leading: IconButton( // Tombol kembali yang lebih eksplisit
+          icon: Icon(Icons.close),
+          onPressed: () => Navigator.of(context).pop(),
+          tooltip: 'Batal',
+        ),
         actions: [
           Padding(
-            padding: const EdgeInsets.only(right: 10.0),
-            child: IconButton(
+            padding: const EdgeInsets.only(right: 12.0),
+            child: TextButton.icon( // Menggunakan TextButton agar lebih ringkas
               icon: const Icon(Icons.save_alt_outlined),
+              label: const Text('Simpan'),
               onPressed: _isLoading ? null : _saveJournal,
-              tooltip: 'Simpan Jurnal',
+              style: TextButton.styleFrom(
+                foregroundColor: theme.colorScheme.primary,
+              ),
             ),
           )
         ],
       ),
       body: SafeArea(
         child: SingleChildScrollView(
-          padding: const EdgeInsets.all(20.0),
+          padding: const EdgeInsets.fromLTRB(20.0, 24.0, 20.0, 20.0), // Padding sedikit berbeda
           child: Form(
             key: _formKey,
             child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
+              crossAxisAlignment: CrossAxisAlignment.start, // Label rata kiri
               children: <Widget>[
                 Text(
-                  'Judul Jurnal',
-                  style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w600),
+                  'Judul',
+                  style: theme.textTheme.labelLarge?.copyWith(fontWeight: FontWeight.w500, color: theme.colorScheme.onSurfaceVariant),
                 ),
                 const SizedBox(height: 8),
                 TextFormField(
                   controller: _titleController,
                   decoration: InputDecoration(
-                    hintText: 'Masukkan judul jurnal Anda...',
-                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(12.0)),
+                    hintText: 'Masukkan judul yang menarik...',
+                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(10.0)),
                     filled: true,
-                    fillColor: Colors.grey[50],
+                    fillColor: theme.colorScheme.surfaceVariant.withOpacity(0.3),
+                    contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                   ),
                   validator: (value) {
-                    if (value == null || value.trim().isEmpty) {
-                      return 'Judul tidak boleh kosong.';
-                    }
+                    if (value == null || value.trim().isEmpty) return 'Judul tidak boleh kosong.';
                     return null;
                   },
-                  textCapitalization: TextCapitalization.sentences,
+                  textCapitalization: TextCapitalization.words, // Setiap kata diawali huruf besar
                 ),
                 const SizedBox(height: 24),
                 Text(
-                  'Isi Jurnal',
-                  style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w600),
+                  'Konten Jurnal',
+                  style: theme.textTheme.labelLarge?.copyWith(fontWeight: FontWeight.w500, color: theme.colorScheme.onSurfaceVariant),
                 ),
                 const SizedBox(height: 8),
                 TextFormField(
                   controller: _contentController,
                   decoration: InputDecoration(
-                    hintText: 'Tuliskan isi jurnal Anda di sini...',
-                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(12.0)),
-                    alignLabelWithHint: true,
+                    hintText: 'Tuliskan pemikiran atau cerita Anda di sini...',
+                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(10.0)),
+                    alignLabelWithHint: true, // Untuk labelText, jika digunakan
                     filled: true,
-                    fillColor: Colors.grey[50],
+                    fillColor: theme.colorScheme.surfaceVariant.withOpacity(0.3),
+                    contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                   ),
-                  maxLines: 12, // Lebih banyak baris untuk konten
+                  maxLines: 15, // Lebih banyak baris
                   validator: (value) {
-                    if (value == null || value.trim().isEmpty) {
-                      return 'Isi jurnal tidak boleh kosong.';
-                    }
+                    if (value == null || value.trim().isEmpty) return 'Isi jurnal tidak boleh kosong.';
                     return null;
                   },
                   textCapitalization: TextCapitalization.sentences,
@@ -190,16 +185,16 @@ class _AddEditJournalPageState extends State<AddEditJournalPage> {
                 const SizedBox(height: 24),
                 Text(
                   'Status Pengajuan',
-                  style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w600),
+                   style: theme.textTheme.labelLarge?.copyWith(fontWeight: FontWeight.w500, color: theme.colorScheme.onSurfaceVariant),
                 ),
                 const SizedBox(height: 8),
                 DropdownButtonFormField<String>(
                   decoration: InputDecoration(
-                    // labelText: 'Status Jurnal', // Label sudah ada di atas
-                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(12.0)),
+                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(10.0)),
                     filled: true,
-                    fillColor: Colors.grey[50],
-                    prefixIcon: Icon(Icons.flag_outlined, color: theme.colorScheme.primary),
+                    fillColor: theme.colorScheme.surfaceVariant.withOpacity(0.3),
+                    prefixIcon: Icon(Icons.flag_circle_outlined, color: theme.colorScheme.primary),
+                    contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4), // Sesuaikan padding
                   ),
                   value: _selectedStatus,
                   hint: const Text('Pilih Status'),
@@ -218,19 +213,18 @@ class _AddEditJournalPageState extends State<AddEditJournalPage> {
                 ),
                 const SizedBox(height: 40),
                 ElevatedButton.icon(
-                  icon: _isLoading 
-                        ? Container(
-                            width: 24,
-                            height: 24,
-                            padding: const EdgeInsets.all(2.0),
-                            child: const CircularProgressIndicator(strokeWidth: 3, color: Colors.white),
-                          )
-                        : const Icon(Icons.save_outlined),
-                  label: Text(_isLoading ? 'Menyimpan...' : 'Simpan Jurnal', style: TextStyle(fontSize: 16)),
+                  icon: _isLoading
+                      ? Container(
+                          width: 20, // Disesuaikan agar konsisten dengan tombol login/register
+                          height: 20,
+                          child: const CircularProgressIndicator(strokeWidth: 2.5, color: Colors.white),
+                        )
+                      : const Icon(Icons.save),
+                  label: Text(_isLoading ? 'Menyimpan...' : 'Simpan Jurnal', style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w500)),
                   onPressed: _isLoading ? null : _saveJournal,
                   style: ElevatedButton.styleFrom(
-                    minimumSize: const Size(double.infinity, 50),
-                    padding: const EdgeInsets.symmetric(vertical: 15),
+                    minimumSize: const Size(double.infinity, 52), // Sedikit lebih tinggi
+                    padding: const EdgeInsets.symmetric(vertical: 12),
                     backgroundColor: theme.colorScheme.primary,
                     foregroundColor: theme.colorScheme.onPrimary,
                     shape: RoundedRectangleBorder(

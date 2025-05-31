@@ -5,6 +5,7 @@ import 'package:sinau_firebase/models/journal_model.dart';
 import 'package:sinau_firebase/pages/add_edit_journal_page.dart';
 import 'package:sinau_firebase/pages/journal_detail_page.dart';
 import 'package:sinau_firebase/utils/time_utils.dart'; // Pastikan path ini benar
+import 'package:sinau_firebase/utils/custom_notification_utils.dart';
 
 class MyJournalsPage extends StatefulWidget {
   final User currentUser;
@@ -52,19 +53,11 @@ class _MyJournalsPageState extends State<MyJournalsPage> {
             .doc(journalId)
             .delete();
         if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-                content: Text('Jurnal berhasil dihapus.'),
-                backgroundColor: Colors.green),
-          );
+          TopNotification.show(context, 'Jurnal berhasil dihapus.', type: NotificationType.success);
         }
       } catch (e) {
         if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-                content: Text('Gagal menghapus jurnal: $e'),
-                backgroundColor: Colors.redAccent),
-          );
+          TopNotification.show(context, 'Gagal menghapus jurnal: $e', type: NotificationType.error);
         }
       }
     }
@@ -104,6 +97,7 @@ class _MyJournalsPageState extends State<MyJournalsPage> {
   Widget build(BuildContext context) {
     final ThemeData theme = Theme.of(context);
     return Scaffold(
+      backgroundColor: Colors.white,
       // AppBar biasanya sudah ada di dasbor induk, jadi di sini tidak perlu
       // appBar: AppBar(title: Text('Jurnal Saya')),
       body: StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(

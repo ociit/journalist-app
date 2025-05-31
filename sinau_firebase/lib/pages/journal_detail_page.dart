@@ -1,23 +1,78 @@
 import 'package:flutter/material.dart';
+import 'package:cloud_firestore/cloud_firestore.dart'; // Diperlukan untuk query username reviewer
 import 'package:sinau_firebase/models/journal_model.dart'; // Sesuaikan path jika perlu
 import 'package:sinau_firebase/utils/time_utils.dart';   // Sesuaikan path jika perlu
 import 'package:flutter/services.dart'; // Untuk Clipboard
+import 'package:sinau_firebase/utils/custom_notification_utils.dart';
 
-class JournalDetailPage extends StatelessWidget {
+class JournalDetailPage extends StatefulWidget { // Diubah menjadi StatefulWidget
   final JournalModel journal;
 
   const JournalDetailPage({super.key, required this.journal});
 
+  @override
+  State<JournalDetailPage> createState() => _JournalDetailPageState();
+}
+
+class _JournalDetailPageState extends State<JournalDetailPage> { // State class baru
+  String? _reviewerUsername; // State untuk menyimpan username reviewer
+  bool _isLoadingReviewerUsername = false;
+
+  @override
+  void initState() {
+    super.initState();
+    if (widget.journal.reviewedBy != null && widget.journal.reviewedBy!.isNotEmpty) {
+      _fetchReviewerUsername(widget.journal.reviewedBy!);
+    }
+  }
+
+  Future<void> _fetchReviewerUsername(String reviewerUid) async {
+    if (mounted) {
+      setState(() {
+        _isLoadingReviewerUsername = true;
+      });
+    }
+    try {
+      DocumentSnapshot userDoc = await FirebaseFirestore.instance
+          .collection('users')
+          .doc(reviewerUid)
+          .get();
+      if (userDoc.exists && userDoc.data() != null) {
+        final userData = userDoc.data() as Map<String, dynamic>;
+        if (mounted) {
+          setState(() {
+            _reviewerUsername = userData['username'] as String? ?? 'ID: $reviewerUid';
+            _isLoadingReviewerUsername = false;
+          });
+        }
+      } else {
+        if (mounted) {
+          setState(() {
+            _reviewerUsername = 'Reviewer tidak ditemukan (ID: $reviewerUid)';
+            _isLoadingReviewerUsername = false;
+          });
+        }
+      }
+    } catch (e) {
+      print("Error fetching reviewer username: $e");
+      if (mounted) {
+        setState(() {
+          _reviewerUsername = 'Gagal memuat nama reviewer';
+          _isLoadingReviewerUsername = false;
+        });
+      }
+    }
+  }
+
   Color _getStatusColor(BuildContext context, String status) {
-    // Menggunakan warna dari tema untuk konsistensi
     final ThemeData theme = Theme.of(context);
     switch (status.toLowerCase()) {
       case 'published':
-        return Colors.green.shade700; // Tetap hijau untuk published
+        return Colors.green.shade700;
       case 'in review':
-        return theme.colorScheme.secondary; // Warna sekunder tema
+        return theme.colorScheme.secondary;
       case 'rejected':
-        return theme.colorScheme.error; // Warna error tema
+        return theme.colorScheme.error;
       case 'created':
         return Colors.grey.shade600;
       default:
@@ -67,8 +122,9 @@ class JournalDetailPage extends StatelessWidget {
   Widget build(BuildContext context) {
     final ThemeData theme = Theme.of(context);
     return Scaffold(
+      backgroundColor: Colors.white,
       appBar: AppBar(
-        title: Text(journal.title, overflow: TextOverflow.ellipsis),
+        title: Text(widget.journal.title, overflow: TextOverflow.ellipsis),
         backgroundColor: theme.colorScheme.surface,
         elevation: 1.0,
         actions: [
@@ -76,10 +132,8 @@ class JournalDetailPage extends StatelessWidget {
             icon: const Icon(Icons.copy_all_outlined),
             tooltip: 'Salin Judul & Penulis',
             onPressed: () {
-              Clipboard.setData(ClipboardData(text: "Judul: ${journal.title}\nPenulis: ${journal.username}"));
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('Judul & Penulis disalin ke clipboard!')),
-              );
+              Clipboard.setData(ClipboardData(text: "Judul: ${widget.journal.title}\nPenulis: ${widget.journal.username}"));
+              TopNotification.show(context, 'Judul & Penulis disalin ke clipboard!', type: NotificationType.info);
             },
           ),
         ],
@@ -90,7 +144,7 @@ class JournalDetailPage extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: <Widget>[
             Text(
-              journal.title,
+              widget.journal.title,
               style: theme.textTheme.headlineMedium?.copyWith(
                 fontWeight: FontWeight.bold,
                 color: theme.colorScheme.primary,
@@ -105,10 +159,10 @@ class JournalDetailPage extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    _buildInfoRow(context, Icons.person_outline, 'Penulis', journal.username),
-                    _buildInfoRow(context, Icons.calendar_today_outlined, 'Dibuat', TimeUtils.formatTimestamp(journal.createdAt)),
-                    if (journal.updatedAt != null && journal.updatedAt != journal.createdAt)
-                      _buildInfoRow(context, Icons.edit_calendar_outlined, 'Diperbarui', TimeUtils.formatTimestamp(journal.updatedAt!)),
+                    _buildInfoRow(context, Icons.person_outline, 'Penulis', widget.journal.username),
+                    _buildInfoRow(context, Icons.calendar_today_outlined, 'Dibuat', TimeUtils.formatTimestamp(widget.journal.createdAt)),
+                    if (widget.journal.updatedAt != null && widget.journal.updatedAt != widget.journal.createdAt)
+                      _buildInfoRow(context, Icons.edit_calendar_outlined, 'Diperbarui', TimeUtils.formatTimestamp(widget.journal.updatedAt!)),
                     
                     Padding(
                       padding: const EdgeInsets.symmetric(vertical: 6.0),
@@ -122,23 +176,40 @@ class JournalDetailPage extends StatelessWidget {
                           ),
                           Chip(
                             label: Text(
-                              _getFriendlyStatusText(journal.status),
+                              _getFriendlyStatusText(widget.journal.status),
                               style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 12),
                             ),
-                            backgroundColor: _getStatusColor(context, journal.status),
+                            backgroundColor: _getStatusColor(context, widget.journal.status),
                             padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                            labelPadding: EdgeInsets.zero, // Hapus padding internal label
-                            materialTapTargetSize: MaterialTapTargetSize.shrinkWrap, // Kurangi area tap
+                            labelPadding: EdgeInsets.zero,
+                            materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
                           ),
                         ],
                       ),
                     ),
 
-                    if (journal.status.toLowerCase() == 'published' && journal.publishedAt != null)
-                      _buildInfoRow(context, Icons.publish_outlined, 'Dipublish', TimeUtils.formatTimestamp(journal.publishedAt!)),
+                    if (widget.journal.status.toLowerCase() == 'published' && widget.journal.publishedAt != null)
+                      _buildInfoRow(context, Icons.publish_outlined, 'Dipublish', TimeUtils.formatTimestamp(widget.journal.publishedAt!)),
                     
-                    if (journal.reviewedBy != null && journal.reviewedBy!.isNotEmpty)
-                       _buildInfoRow(context, Icons.rate_review_outlined, 'Direview oleh', '(...${journal.reviewedBy!.substring(journal.reviewedBy!.length - 6)})'),
+                    // Menampilkan username reviewer
+                    if (widget.journal.reviewedBy != null && widget.journal.reviewedBy!.isNotEmpty)
+                      _isLoadingReviewerUsername
+                        ? Padding(
+                            padding: const EdgeInsets.symmetric(vertical: 6.0),
+                            child: Row(
+                              children: [
+                                Icon(Icons.rate_review_outlined, size: 20, color: theme.colorScheme.primary.withOpacity(0.8)),
+                                const SizedBox(width: 12),
+                                Text(
+                                  'Direview oleh: ',
+                                  style: theme.textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w600),
+                                ),
+                                const SizedBox(width: 4),
+                                const SizedBox(height: 16, width: 16, child: CircularProgressIndicator(strokeWidth: 2)),
+                              ],
+                            ),
+                          )
+                        : _buildInfoRow(context, Icons.rate_review_outlined, 'Direview oleh', _reviewerUsername ?? 'Tidak diketahui'),
                   ],
                 ),
               ),
@@ -157,13 +228,13 @@ class JournalDetailPage extends StatelessWidget {
             Container(
               padding: const EdgeInsets.all(16.0),
               decoration: BoxDecoration(
-                color: theme.scaffoldBackgroundColor, // Atau Colors.grey[50] jika ingin sedikit beda
+                color: theme.scaffoldBackgroundColor,
                 borderRadius: BorderRadius.circular(8.0),
                 border: Border.all(color: Colors.grey.shade300)
               ),
               child: SelectableText(
-                journal.content,
-                style: theme.textTheme.bodyLarge?.copyWith(height: 1.7, fontSize: 16), // Line height dan font size
+                widget.journal.content,
+                style: theme.textTheme.bodyLarge?.copyWith(height: 1.7, fontSize: 16),
                 textAlign: TextAlign.justify,
               ),
             ),

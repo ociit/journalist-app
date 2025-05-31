@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:sinau_firebase/pages/profile_page.dart';
 import 'package:sinau_firebase/pages/my_journals_page.dart';
 import 'package:sinau_firebase/pages/published_journals_page.dart';
+import 'package:sinau_firebase/utils/custom_notification_utils.dart';
 
 class JournalistDashboard extends StatefulWidget {
   final DocumentSnapshot<Map<String, dynamic>> firestoreUserDocument;
@@ -28,7 +29,6 @@ class _JournalistDashboardState extends State<JournalistDashboard> {
     super.initState();
     userData = widget.firestoreUserDocument.data()!;
     username = userData['username'] as String? ?? 'Pengguna Anonim';
-    String email = userData['email'] as String? ?? authUser?.email ?? 'Pengguna';
     displayName = username; // Prioritaskan username untuk AppBar title
   }
 
@@ -41,7 +41,7 @@ class _JournalistDashboardState extends State<JournalistDashboard> {
     return [
       MyJournalsPage(currentUser: authUser!, currentUsername: username), // Indeks 0
       PublishedJournalsPage(currentUserRole: currentRole),              // Indeks 1
-      ProfilePage(userData: userData),                                   // Indeks 2 (Paling Kanan)
+      ProfilePage(initialUserData: userData),                                   // Indeks 2 (Paling Kanan)
     ];
   }
 
@@ -58,8 +58,7 @@ class _JournalistDashboardState extends State<JournalistDashboard> {
     } catch (e) {
       print("Error signing out from dashboard: $e");
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text("Gagal logout: $e"), backgroundColor: Colors.redAccent));
+        TopNotification.show(context, 'Gagal logout: $e', type: NotificationType.error);
       }
     }
   }
@@ -98,6 +97,7 @@ class _JournalistDashboardState extends State<JournalistDashboard> {
     final List<Widget> pages = _journalistPages();
 
     return Scaffold(
+      backgroundColor: Colors.white,
       appBar: AppBar(
         title: Text('$displayName, Journalist!'),
         backgroundColor: theme.colorScheme.primaryContainer, // Contoh penggunaan warna tema
