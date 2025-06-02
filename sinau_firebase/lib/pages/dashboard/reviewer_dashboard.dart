@@ -1,11 +1,10 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
-import 'package:sinau_firebase/pages/profile_page.dart';
-import 'package:sinau_firebase/pages/journals_in_review_page.dart';
-import 'package:sinau_firebase/pages/published_journals_page.dart';
-import 'package:sinau_firebase/pages/rejected_journals_page.dart';
+import 'package:sinau_firebase/pages/dashboard/profile_page.dart';
+import 'package:sinau_firebase/pages/journals/reviewer/journals_in_review_page.dart';
+import 'package:sinau_firebase/pages/journals/published_journals_page.dart';
+import 'package:sinau_firebase/pages/journals/reviewer/rejected_journals_page.dart';
 import 'package:sinau_firebase/utils/custom_notification_utils.dart';
 
 class ReviewerDashboard extends StatefulWidget {

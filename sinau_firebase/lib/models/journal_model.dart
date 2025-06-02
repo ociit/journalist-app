@@ -1,16 +1,19 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 
+//? Model untuk Jurnal
 class JournalModel {
-  final String? id; // ID dokumen dari Firestore
+  final String? id;
   final String title;
   final String content;
-  final String userId; // UID penulis
-  final String username; // Username penulis (denormalisasi)
-  String status; // 'created', 'in review', 'rejected', 'published'
+  final String userId;
+  final String username;
+  String status;
   final Timestamp createdAt;
   Timestamp? updatedAt;
   Timestamp? publishedAt;
-  String? reviewedBy; // UID reviewer
+  String? reviewedBy;
+
+//! final berarti variabel tersebut hanya bisa diinisialisasi (diberi nilai) satu kali.
 
   JournalModel({
     this.id,
@@ -25,7 +28,6 @@ class JournalModel {
     this.reviewedBy,
   });
 
-  // Untuk mengubah Firestore DocumentSnapshot menjadi objek JournalModel
   factory JournalModel.fromFirestore(DocumentSnapshot<Map<String, dynamic>> doc) {
     Map<String, dynamic> data = doc.data()!;
     return JournalModel(

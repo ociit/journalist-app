@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:sinau_firebase/models/journal_model.dart';
-import 'package:sinau_firebase/pages/journal_detail_page.dart';
+import 'package:sinau_firebase/pages/journals/journal_detail_page.dart';
 import 'package:sinau_firebase/utils/time_utils.dart'; // Pastikan path ini benar
 import 'package:sinau_firebase/utils/custom_notification_utils.dart';
 

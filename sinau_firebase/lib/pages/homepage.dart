@@ -12,14 +12,9 @@ class Homepage extends StatefulWidget {
 }
 
 class _HomepageState extends State<Homepage> {
-  final User? authUser = FirebaseAuth.instance.currentUser; // authUser dari Firebase Auth
+  final User? authUser = FirebaseAuth.instance.currentUser;
+  Future<void> _showLogoutConfirmationDialog() async {}
 
-  // Fungsi logout dan dialog konfirmasi (tetap sama seperti sebelumnya)
-  Future<void> _performSignOut() async { /* ... kode Anda ... */ }
-  Future<void> _showLogoutConfirmationDialog() async { /* ... kode Anda ... */ }
-  // Pastikan kode _performSignOut dan _showLogoutConfirmationDialog Anda ada di sini
-
-  // Widget untuk membangun UI berdasarkan data pengguna dari Firestore
   Widget _buildRoleSpecificUI(DocumentSnapshot<Map<String, dynamic>> userDocument) {
     if (!userDocument.exists || userDocument.data() == null) {
       return const Center(child: Text("Data pengguna tidak ditemukan di Firestore."));
@@ -27,18 +22,14 @@ class _HomepageState extends State<Homepage> {
 
     Map<String, dynamic> userData = userDocument.data()!;
     String userRole = userData['role'] ?? 'Tidak Diketahui';
-    // User authUser sudah ada di state, kita bisa teruskan jika perlu
-    // String? userUsername = userData['username'] as String?;
-    // String userEmail = authUser?.email ?? 'Email tidak tersedia';
-    // String displayName = userUsername ?? userEmail;
 
-    // Navigasi ke dasbor yang sesuai berdasarkan peran
+    //! Navigasi berdasarkan Role
     if (userRole == 'Journalist') {
       return JournalistDashboard(firestoreUserDocument: userDocument);
     } else if (userRole == 'Reviewer') {
       return ReviewerDashboard(firestoreUserDocument: userDocument);
     } else {
-      // Tampilan default jika peran tidak dikenali
+      //? Tampilan default jika peran tidak dikenali
       return Scaffold(
         appBar: AppBar(
           title: const Text("Homepage"),

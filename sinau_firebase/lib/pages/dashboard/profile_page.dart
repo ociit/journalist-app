@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart'; // Diperlukan untuk StreamBuilder
-import 'package:sinau_firebase/pages/edit_profile_page.dart';
+import 'package:sinau_firebase/pages/dashboard/edit_profile_page.dart';
 import 'package:sinau_firebase/utils/custom_notification_utils.dart';
 
 class ProfilePage extends StatefulWidget {
