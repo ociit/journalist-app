@@ -2,29 +2,23 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:sinau_firebase/pages/register.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:sinau_firebase/utils/custom_notification_utils.dart';
 
 class Login extends StatefulWidget {
   const Login({super.key});
 
   @override
-  State<Login> createState() => _LoginState();
+  State<Login> createState() => LoginState();
 }
 
-class _LoginState extends State<Login> {
+class LoginState extends State<Login> {
   TextEditingController loginIdentifierController = TextEditingController();
   TextEditingController passwordController = TextEditingController();
-  bool _isLoading = false;
-
-  void showErrorSnackbar(String message) {
-    if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(message), backgroundColor: Colors.redAccent),
-      );
-    }
-  }
+  bool isLoading = false;
+  bool isPasswordVisible = false;
 
   void setLoading(bool loading) {
-    if (mounted) setState(() => _isLoading = loading);
+    if (mounted) setState(() => isLoading = loading);
   }
 
   @override
@@ -35,18 +29,16 @@ class _LoginState extends State<Login> {
   }
 
   Future<void> signIn() async {
-    if (mounted) setState(() => _isLoading = true);
-
     String loginInput = loginIdentifierController.text.trim();
     String password = passwordController.text.trim();
+    String? emailToUse;
 
+    if (mounted) setState(() => isLoading = true);
     if (loginInput.isEmpty || password.isEmpty) {
-      showErrorSnackbar('Email/Username dan Password tidak boleh kosong.');
+      TopNotification.show(context, 'Email/Username dan Password tidak boleh kosong.', type: NotificationType.error);
       setLoading(false);
       return;
     }
-
-    String? emailToUse;
 
     try {
       bool isEmail = loginInput.contains('@');
@@ -64,14 +56,14 @@ class _LoginState extends State<Login> {
           final userData = userQuery.docs.first.data() as Map<String, dynamic>?;
           emailToUse = userData?['email'] as String?;
         } else {
-          showErrorSnackbar('Username tidak ditemukan.');
+          TopNotification.show(context, 'Username tidak ditemukan.', type: NotificationType.error);
           setLoading(false);
           return;
         }
       }
 
       if (emailToUse == null || emailToUse.isEmpty) {
-        showErrorSnackbar('Gagal mendapatkan email untuk login.');
+        TopNotification.show(context, 'Gagal mendapatkan email untuk login.', type: NotificationType.error);
         setLoading(false);
         return;
       }
@@ -82,14 +74,6 @@ class _LoginState extends State<Login> {
       );
 
       print("Login Berhasil: ${FirebaseAuth.instance.currentUser?.email}");
-
-      // TODO: Navigasi ke halaman berikutnya
-      // if (mounted) {
-      //   Navigator.pushReplacement(
-      //     context,
-      //     MaterialPageRoute(builder: (context) => const HomePage()),
-      //   );
-      // }
 
     } on FirebaseAuthException catch (e) {
       String errorMessage;
@@ -113,22 +97,20 @@ class _LoginState extends State<Login> {
         print('An unknown Firebase error occurred: ${e.code} - ${e.message}');
       }
 
+      //? Menampilkan notif untuk error
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(errorMessage)),
-        );
+        TopNotification.show(context, errorMessage, type: NotificationType.error);
       }
+
     } catch (e) {
       print('Terjadi kesalahan lain: $e');
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Terjadi kesalahan yang tidak terduga.')),
-        );
+        TopNotification.show(context, 'Terjadi kesalahan yang tidak terduga.', type: NotificationType.error);
       }
     } finally {
       if (mounted) {
         setState(() {
-          _isLoading = false;
+          isLoading = false;
         });
       }
     }
@@ -170,18 +152,29 @@ class _LoginState extends State<Login> {
                 const SizedBox(height: 20),
                 TextField(
                   controller: passwordController,
-                  obscureText: true,
+                  obscureText: !isPasswordVisible,
                   decoration: InputDecoration(
                     labelText: 'Password',
                     prefixIcon: const Icon(Icons.lock),
                     border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(10.0),
                     ),
+                    suffixIcon: IconButton(
+                      icon: Icon(
+                        isPasswordVisible ? Icons.visibility_off_outlined : Icons.visibility_outlined,
+                        color: Colors.grey[600],
+                      ),
+                      onPressed: () {
+                        setState(() {
+                          isPasswordVisible = !isPasswordVisible;
+                        });
+                      },
+                    ),
                   ),
                 ),
                 const SizedBox(height: 30),
                 ElevatedButton(
-                  onPressed: _isLoading ? null : signIn,
+                  onPressed: isLoading ? null : signIn,
                   style: ElevatedButton.styleFrom(
                     minimumSize: const Size(double.infinity, 50),
                     shape: RoundedRectangleBorder(
@@ -189,7 +182,7 @@ class _LoginState extends State<Login> {
                     ),
                     elevation: 3,
                   ),
-                  child: _isLoading
+                  child: isLoading
                       ? const SizedBox(
                           width: 24,
                           height: 24,

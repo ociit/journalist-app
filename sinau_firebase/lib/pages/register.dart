@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:sinau_firebase/utils/custom_notification_utils.dart';
 
 class RegisterPage extends StatefulWidget {
   const RegisterPage({super.key});
@@ -17,6 +18,9 @@ class _RegisterPageState extends State<RegisterPage> {
   bool isLoading = false;
   String? selectedRole;
   final List<String> roles = ['Journalist', 'Reviewer'];
+
+  bool _isPasswordVisible = false;
+  bool _isConfirmPasswordVisible = false;
 
   @override
   void dispose() {
@@ -98,6 +102,7 @@ class _RegisterPageState extends State<RegisterPage> {
             'username': username,
             'role': selectedRole,
             'createdAt': Timestamp.now(),
+            
           });
           print("SIGN_UP_DEBUG: Data pengguna BERHASIL disimpan ke Firestore.");
         } catch (firestoreError, stackTrace) {
@@ -201,6 +206,17 @@ class _RegisterPageState extends State<RegisterPage> {
                     border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(10.0),
                     ),
+                    suffixIcon: IconButton(
+                      icon: Icon(
+                        _isPasswordVisible ? Icons.visibility_off_outlined : Icons.visibility_outlined,
+                        color: Colors.grey[600],
+                      ),
+                      onPressed: () {
+                        setState(() {
+                          _isPasswordVisible = !_isPasswordVisible;
+                        });
+                      },
+                    ),
                   ),
                 ),
                 const SizedBox(height: 15),
@@ -212,6 +228,17 @@ class _RegisterPageState extends State<RegisterPage> {
                     prefixIcon: const Icon(Icons.lock_outline),
                     border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(10.0),
+                    ),
+                    suffixIcon: IconButton(
+                      icon: Icon(
+                        _isConfirmPasswordVisible ? Icons.visibility_off_outlined : Icons.visibility_outlined,
+                        color: Colors.grey[600],
+                      ),
+                      onPressed: () {
+                        setState(() {
+                          _isConfirmPasswordVisible = !_isConfirmPasswordVisible;
+                        });
+                      },
                     ),
                   ),
                 ),

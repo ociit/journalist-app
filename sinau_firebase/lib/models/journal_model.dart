@@ -13,7 +13,7 @@ class JournalModel {
   Timestamp? publishedAt;
   String? reviewedBy;
 
-//! final berarti variabel tersebut hanya bisa diinisialisasi (diberi nilai) satu kali.
+//! final berarti variabel tersebut hanya bisa diinisialisasi (diberi nilai) satu kali
 
   JournalModel({
     this.id,
