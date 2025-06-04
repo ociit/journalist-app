@@ -5,12 +5,12 @@ import 'package:sinau_firebase/pages/journals/journal_detail_page.dart';
 import 'package:sinau_firebase/utils/time_utils.dart'; // Pastikan path ini benar
 import 'package:sinau_firebase/utils/custom_notification_utils.dart';
 
-
 // Widget Card terpisah (bisa juga ditaruh di file sendiri dan diimpor)
 class RejectedJournalCard extends StatefulWidget {
   final JournalModel journal;
   final ThemeData theme;
-  final Future<void> Function(BuildContext, String) onDelete; // Fungsi hapus harus future
+  final Future<void> Function(BuildContext, String)
+  onDelete; // Fungsi hapus harus future
 
   const RejectedJournalCard({
     super.key,
@@ -30,13 +30,15 @@ class _RejectedJournalCardState extends State<RejectedJournalCard> {
   @override
   void initState() {
     super.initState();
-    if (widget.journal.reviewedBy != null && widget.journal.reviewedBy!.isNotEmpty) {
+    if (widget.journal.reviewedBy != null &&
+        widget.journal.reviewedBy!.isNotEmpty) {
       _fetchReviewerUsername(widget.journal.reviewedBy!);
     } else {
       _reviewerUsername = 'N/A';
     }
   }
 
+  //? Fungsi untuk mencocokan username reviewer
   Future<void> _fetchReviewerUsername(String reviewerUid) async {
     if (!mounted) return;
     setState(() => _isLoadingReviewer = true);
@@ -53,7 +55,11 @@ class _RejectedJournalCardState extends State<RejectedJournalCard> {
           });
         }
       } else {
-         if (mounted) setState(() => _reviewerUsername = 'Reviewer (ID: ...${reviewerUid.substring(reviewerUid.length - 6)})');
+        if (mounted)
+          setState(
+            () => _reviewerUsername =
+                'Reviewer (ID: ...${reviewerUid.substring(reviewerUid.length - 6)})',
+          );
       }
     } catch (e) {
       print("Error fetching reviewer username for rejected list: $e");
@@ -63,16 +69,77 @@ class _RejectedJournalCardState extends State<RejectedJournalCard> {
     }
   }
 
+  //? Fungsi untuk mengembalikan jurnal yang telah terpublish ke status in-review
+  Future<void> revertToInReview(BuildContext context, String journalId) async {
+    bool? confirmRevert = await showDialog<bool>(
+      context: context,
+      builder: (BuildContext dialogContext) {
+        return AlertDialog(
+          title: const Text('Konfirmasi Kembalikan Status'),
+          content: const Text(
+            'Apakah Anda yakin ingin mengembalikan status jurnal ini menjadi "Dalam Review"? Jurnal ini akan hilang dari daftar terpublish.',
+          ),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(15.0),
+          ),
+          actions: <Widget>[
+            TextButton(
+              child: const Text('Batal'),
+              onPressed: () => Navigator.of(dialogContext).pop(false),
+            ),
+            TextButton(
+              style: TextButton.styleFrom(
+                foregroundColor: Colors.orange,
+              ), // Warna berbeda untuk aksi ini
+              child: const Text('Kembalikan ke Review'),
+              onPressed: () => Navigator.of(dialogContext).pop(true),
+            ),
+          ],
+        );
+      },
+    );
+
+    if (confirmRevert == true) {
+      try {
+        Map<String, dynamic> dataToUpdate = {
+          'status': 'in review',
+          'updatedAt': Timestamp.now(),
+          'publishedAt': null, //!untuk Hapus tanggal publish
+          // 'revertedBy': currentUser?.uid,
+        };
+        await FirebaseFirestore.instance
+            .collection('journals')
+            .doc(journalId)
+            .update(dataToUpdate);
+        TopNotification.show(
+          context,
+          'Status jurnal berhasil dikembalikan ke "Dalam Review".',
+          type: NotificationType.info,
+        );
+      } catch (e) {
+        TopNotification.show(
+          context,
+          'Gagal mengembalikan status jurnal: $e',
+          type: NotificationType.error,
+        );
+        print("Error reverting journal status: $e");
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Card(
       elevation: 2.0,
       margin: const EdgeInsets.symmetric(vertical: 8.0),
       shape: RoundedRectangleBorder(
-        side: BorderSide(color: widget.theme.colorScheme.error.withOpacity(0.6), width: 1.5),
+        side: BorderSide(
+          color: widget.theme.colorScheme.error.withOpacity(0.6),
+          width: 1.5,
+        ),
         borderRadius: BorderRadius.circular(12.0),
       ),
-      color: widget.theme.colorScheme.errorContainer.withOpacity(0.4),
+      // color: widget.theme.colorScheme.errorContainer.withOpacity(0.4),
       child: InkWell(
         borderRadius: BorderRadius.circular(11.0),
         onTap: () {
@@ -92,7 +159,9 @@ class _RejectedJournalCardState extends State<RejectedJournalCard> {
                 widget.journal.title,
                 style: widget.theme.textTheme.titleLarge?.copyWith(
                   fontWeight: FontWeight.bold,
-                  color: widget.theme.colorScheme.onErrorContainer.withOpacity(0.9),
+                  color: widget.theme.colorScheme.onErrorContainer.withOpacity(
+                    0.9,
+                  ),
                 ),
                 maxLines: 2,
                 overflow: TextOverflow.ellipsis,
@@ -100,14 +169,20 @@ class _RejectedJournalCardState extends State<RejectedJournalCard> {
               const SizedBox(height: 8),
               Row(
                 children: [
-                  Icon(Icons.person_outline, size: 16, color: widget.theme.colorScheme.onErrorContainer.withOpacity(0.7)),
+                  Icon(
+                    Icons.person_outline,
+                    size: 16,
+                    color: widget.theme.colorScheme.onErrorContainer
+                        .withOpacity(0.7),
+                  ),
                   const SizedBox(width: 6),
                   Expanded(
                     child: Text(
                       widget.journal.username, // Penulis jurnal
                       style: widget.theme.textTheme.bodyMedium?.copyWith(
                         fontStyle: FontStyle.italic,
-                        color: widget.theme.colorScheme.onErrorContainer.withOpacity(0.7),
+                        color: widget.theme.colorScheme.onErrorContainer
+                            .withOpacity(0.7),
                       ),
                       overflow: TextOverflow.ellipsis,
                     ),
@@ -133,26 +208,69 @@ class _RejectedJournalCardState extends State<RejectedJournalCard> {
                         if (widget.journal.updatedAt != null)
                           Text(
                             'Pada: ${TimeUtils.formatTimestamp(widget.journal.updatedAt!)}',
-                            style: widget.theme.textTheme.bodySmall?.copyWith(color: widget.theme.colorScheme.onErrorContainer.withOpacity(0.6)),
+                            style: widget.theme.textTheme.bodySmall?.copyWith(
+                              color: widget.theme.colorScheme.onErrorContainer
+                                  .withOpacity(0.6),
+                            ),
                           ),
-                        if (widget.journal.reviewedBy != null && widget.journal.reviewedBy!.isNotEmpty)
+                        if (widget.journal.reviewedBy != null &&
+                            widget.journal.reviewedBy!.isNotEmpty)
                           _isLoadingReviewer
-                              ? Row(children: [
-                                  Text('Oleh: ', style: widget.theme.textTheme.bodySmall?.copyWith(color: widget.theme.colorScheme.onErrorContainer.withOpacity(0.6))),
-                                  SizedBox(height: 10, width: 10, child: CircularProgressIndicator(strokeWidth: 1.5)),
-                                ])
+                              ? Row(
+                                  children: [
+                                    Text(
+                                      'Oleh: ',
+                                      style: widget.theme.textTheme.bodySmall
+                                          ?.copyWith(
+                                            color: widget
+                                                .theme
+                                                .colorScheme
+                                                .onErrorContainer
+                                                .withOpacity(0.6),
+                                          ),
+                                    ),
+                                    SizedBox(
+                                      height: 10,
+                                      width: 10,
+                                      child: CircularProgressIndicator(
+                                        strokeWidth: 1.5,
+                                      ),
+                                    ),
+                                  ],
+                                )
                               : Text(
                                   'Oleh: ${_reviewerUsername ?? 'Memuat...'}', // Tampilkan username reviewer
-                                  style: widget.theme.textTheme.bodySmall?.copyWith(color: widget.theme.colorScheme.onErrorContainer.withOpacity(0.6)),
+                                  style: widget.theme.textTheme.bodySmall
+                                      ?.copyWith(
+                                        color: widget
+                                            .theme
+                                            .colorScheme
+                                            .onErrorContainer
+                                            .withOpacity(0.6),
+                                      ),
                                 ),
                       ],
                     ),
                   ),
-                  IconButton(
-                    icon: Icon(Icons.delete_forever_outlined, color: widget.theme.colorScheme.error),
-                    tooltip: 'Hapus Jurnal Ditolak Ini',
-                    // Panggil callback onDelete yang diteruskan dari RejectedJournalsPage
-                    onPressed: () => widget.onDelete(context, widget.journal.id!),
+                  Row(
+                    children: [
+                      IconButton(
+                        onPressed: () =>
+                            revertToInReview(context, widget.journal.id!),
+                        icon: Icon(Icons.undo_outlined),
+                        color: Colors.orange.shade700,
+                        tooltip: 'Kembalikan ke in-review',
+                      ),
+                      IconButton(
+                        icon: Icon(
+                          Icons.delete_forever_outlined,
+                          color: widget.theme.colorScheme.error,
+                        ),
+                        tooltip: 'Hapus Jurnal Ditolak Ini',
+                        onPressed: () =>
+                            widget.onDelete(context, widget.journal.id!),
+                      ),
+                    ],
                   ),
                 ],
               ),
@@ -164,20 +282,26 @@ class _RejectedJournalCardState extends State<RejectedJournalCard> {
   }
 }
 
-
 class RejectedJournalsPage extends StatelessWidget {
   const RejectedJournalsPage({super.key});
 
   // Fungsi _deleteRejectedJournal sekarang menjadi bagian dari RejectedJournalsPage
   // karena RejectedJournalCard akan memanggilnya via callback.
-  Future<void> _deleteJournalFromList(BuildContext context, String journalId) async {
+  Future<void> _deleteJournalFromList(
+    BuildContext context,
+    String journalId,
+  ) async {
     bool? confirmDelete = await showDialog<bool>(
       context: context,
       builder: (BuildContext dialogContext) {
         return AlertDialog(
           title: const Text('Konfirmasi Hapus'),
-          content: const Text('Apakah Anda yakin ingin menghapus jurnal yang ditolak ini secara permanen?'),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15.0)),
+          content: const Text(
+            'Apakah Anda yakin ingin menghapus jurnal yang ditolak ini secara permanen?',
+          ),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(15.0),
+          ),
           actions: <Widget>[
             TextButton(
               child: const Text('Batal'),
@@ -195,11 +319,22 @@ class RejectedJournalsPage extends StatelessWidget {
 
     if (confirmDelete == true) {
       try {
-        await FirebaseFirestore.instance.collection('journals').doc(journalId).delete();
+        await FirebaseFirestore.instance
+            .collection('journals')
+            .doc(journalId)
+            .delete();
         // context di sini adalah BuildContext dari RejectedJournalsPage
-        TopNotification.show(context, 'Jurnal yang ditolak berhasil dihapus.', type: NotificationType.success);
+        TopNotification.show(
+          context,
+          'Jurnal yang ditolak berhasil dihapus.',
+          type: NotificationType.success,
+        );
       } catch (e) {
-        TopNotification.show(context, 'Gagal menghapus jurnal: $e', type: NotificationType.error);
+        TopNotification.show(
+          context,
+          'Gagal menghapus jurnal: $e',
+          type: NotificationType.error,
+        );
       }
     }
   }
@@ -224,29 +359,41 @@ class RejectedJournalsPage extends StatelessWidget {
             return Center(
               child: Padding(
                 padding: const EdgeInsets.all(16.0),
-                child: Text('Gagal memuat jurnal ditolak: ${snapshot.error}', textAlign: TextAlign.center),
-              )
+                child: Text(
+                  'Gagal memuat jurnal ditolak: ${snapshot.error}',
+                  textAlign: TextAlign.center,
+                ),
+              ),
             );
           }
           if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
-            return Center( // Tampilan jika tidak ada jurnal ditolak
+            return Center(
+              // Tampilan jika tidak ada jurnal ditolak
               child: Padding(
                 padding: const EdgeInsets.all(20.0),
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    Icon(Icons.thumb_down_off_alt_outlined, size: 80, color: Colors.grey[400]),
+                    Icon(
+                      Icons.thumb_down_off_alt_outlined,
+                      size: 80,
+                      color: Colors.grey[400],
+                    ),
                     const SizedBox(height: 20),
                     Text(
                       'Tidak Ada Jurnal Ditolak',
                       textAlign: TextAlign.center,
-                      style: theme.textTheme.headlineSmall?.copyWith(color: Colors.grey[600]),
+                      style: theme.textTheme.headlineSmall?.copyWith(
+                        color: Colors.grey[600],
+                      ),
                     ),
-                     const SizedBox(height: 8),
+                    const SizedBox(height: 8),
                     Text(
                       'Tidak ada jurnal dengan status ditolak saat ini.',
                       textAlign: TextAlign.center,
-                      style: theme.textTheme.bodyLarge?.copyWith(color: Colors.grey[600]),
+                      style: theme.textTheme.bodyLarge?.copyWith(
+                        color: Colors.grey[600],
+                      ),
                     ),
                   ],
                 ),
