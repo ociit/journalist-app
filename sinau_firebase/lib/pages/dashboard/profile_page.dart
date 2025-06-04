@@ -3,6 +3,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart'; // Diperlukan untuk StreamBuilder
 import 'package:sinau_firebase/pages/dashboard/edit_profile_page.dart';
 import 'package:sinau_firebase/utils/custom_notification_utils.dart';
+import 'package:sinau_firebase/pages/dashboard/journalist_dashboard.dart';
 
 class ProfilePage extends StatefulWidget {
   // widget.userData (Map<String, dynamic>) masih berguna untuk dikirim ke EditProfilePage
@@ -64,12 +65,51 @@ class _ProfilePageState extends State<ProfilePage> {
     );
   }
 
+    Future<void> performSignOut() async {
+    try {
+      await FirebaseAuth.instance.signOut();
+      // Wrapper akan menangani navigasi ke halaman login
+    } catch (e) {
+      print("Error signing out from dashboard: $e");
+      if (mounted) {
+        TopNotification.show(context, 'Gagal logout: $e', type: NotificationType.error);
+      }
+    }
+  }
+
+  Future<void> showLogoutConfirmationDialog() async {
+    return showDialog<void>(
+      context: context,
+      barrierDismissible: false,
+      builder: (BuildContext dialogContext) {
+        return AlertDialog(
+          title: const Text('Konfirmasi Logout'),
+          content: const Text('Apakah Anda yakin ingin keluar dari akun ini?'),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15.0)),
+          actions: <Widget>[
+            TextButton(
+              child: const Text('Batal'),
+              onPressed: () => Navigator.of(dialogContext).pop(),
+            ),
+            TextButton(
+              style: TextButton.styleFrom(foregroundColor: Colors.red),
+              child: const Text('Logout'),
+              onPressed: () {
+                Navigator.of(dialogContext).pop();
+                performSignOut();
+              },
+            ),
+          ],
+        );
+      },
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final ThemeData theme = Theme.of(context);
 
     if (currentUser == null) {
-      // Seharusnya tidak terjadi jika Wrapper bekerja dengan benar
       return const Scaffold(body: Center(child: Text("Pengguna tidak login.")));
     }
 
@@ -205,6 +245,18 @@ class _ProfilePageState extends State<ProfilePage> {
           },
         ),
       ),
+      floatingActionButtonLocation: FloatingActionButtonLocation.endFloat,
+      floatingActionButton: 
+      Padding(
+      padding: const EdgeInsets.only(bottom: 0, right: 0), 
+      child: FloatingActionButton.extended(
+        onPressed: showLogoutConfirmationDialog,
+        tooltip: 'Logout',
+        backgroundColor: Colors.red.shade600,
+        foregroundColor: Colors.white,
+        icon: const Icon(Icons.exit_to_app_rounded), 
+        label: const Text('Logout'),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadiusGeometry.circular(12.0)),)),
     );
   }
 }

@@ -10,7 +10,8 @@ class PublishedJournalsPage extends StatelessWidget {
 
   const PublishedJournalsPage({super.key, required this.currentUserRole});
 
-  Future<void> _deletePublishedJournal(BuildContext context, String journalId) async {
+  //? Fungsi untuk menghapus jurnal yang telah terpublish
+  Future<void> deletePublishedJournal(BuildContext context, String journalId) async {
     bool? confirmDelete = await showDialog<bool>(
       context: context,
       builder: (BuildContext dialogContext) {
@@ -39,6 +40,47 @@ class PublishedJournalsPage extends StatelessWidget {
         TopNotification.show(context, 'Jurnal berhasil dihapus permanen.', type: NotificationType.success);
       } catch (e) {
         TopNotification.show(context, 'Gagal menghapus jurnal: $e', type: NotificationType.error);
+      }
+    }
+  }
+
+  //? Fungsi untuk mengembalikan jurnal yang telah terpublish ke status in-review
+  Future<void> revertToInReview(BuildContext context, String journalId) async {
+    bool? confirmRevert = await showDialog<bool>(
+      context: context,
+      builder: (BuildContext dialogContext) {
+        return AlertDialog(
+          title: const Text('Konfirmasi Kembalikan Status'),
+          content: const Text('Apakah Anda yakin ingin mengembalikan status jurnal ini menjadi "Dalam Review"? Jurnal ini akan hilang dari daftar terpublish.'),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15.0)),
+          actions: <Widget>[
+            TextButton(
+              child: const Text('Batal'),
+              onPressed: () => Navigator.of(dialogContext).pop(false),
+            ),
+            TextButton(
+              style: TextButton.styleFrom(foregroundColor: Colors.orange), // Warna berbeda untuk aksi ini
+              child: const Text('Kembalikan ke Review'),
+              onPressed: () => Navigator.of(dialogContext).pop(true),
+            ),
+          ],
+        );
+      },
+    );
+
+    if (confirmRevert == true) {
+      try {
+        Map<String, dynamic> dataToUpdate = {
+          'status': 'in review',
+          'updatedAt': Timestamp.now(),
+          'publishedAt': null, //!untuk Hapus tanggal publish
+          // 'revertedBy': currentUser?.uid,
+        };
+        await FirebaseFirestore.instance.collection('journals').doc(journalId).update(dataToUpdate);
+        TopNotification.show(context, 'Status jurnal berhasil dikembalikan ke "Dalam Review".', type: NotificationType.info);
+      } catch (e) {
+        TopNotification.show(context, 'Gagal mengembalikan status jurnal: $e', type: NotificationType.error);
+        print("Error reverting journal status: $e");
       }
     }
   }
@@ -135,7 +177,7 @@ class PublishedJournalsPage extends StatelessWidget {
                           children: [
                             Icon(Icons.person_outline, size: 16, color: Colors.grey[700]),
                             const SizedBox(width: 6),
-                            Expanded( // Expanded agar nama penulis tidak overflow
+                            Expanded( // agar nama penulis tidak overflow
                               child: Text(
                                 journal.username,
                                 style: theme.textTheme.bodyMedium?.copyWith(
@@ -175,10 +217,21 @@ class PublishedJournalsPage extends StatelessWidget {
                               ],
                             ),
                             if (currentUserRole == 'Reviewer')
-                              IconButton(
-                                icon: Icon(Icons.delete_forever_outlined, color: theme.colorScheme.error),
-                                tooltip: 'Hapus Jurnal Ini (Reviewer)',
-                                onPressed: () => _deletePublishedJournal(context, journal.id!),
+                              Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  IconButton(
+                                    icon: Icon(Icons.undo_outlined),
+                                    color: Colors. orange.shade700,
+                                    tooltip: 'Kembalikan ke in-review',
+                                    onPressed: () => revertToInReview(context, journal.id!), 
+                                  ),
+                                  IconButton(
+                                    icon: Icon(Icons.delete_forever_outlined, color: theme.colorScheme.error),
+                                    tooltip: 'Hapus Jurnal Ini (Reviewer)',
+                                    onPressed: () => deletePublishedJournal(context, journal.id!),
+                                  ),
+                                ],
                               ),
                           ],
                         ),

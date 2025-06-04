@@ -20,6 +20,9 @@ class _ReviewerDashboardState extends State<ReviewerDashboard> {
   int _selectedIndex = 0; // Default ke tab pertama (Review Jurnal)
 
   late Map<String, dynamic> userData;
+  late String username;
+  late String email;
+  late String role;
   late String displayName;
 
   final User? authUser = FirebaseAuth.instance.currentUser;
@@ -28,9 +31,10 @@ class _ReviewerDashboardState extends State<ReviewerDashboard> {
   void initState() {
     super.initState();
     userData = widget.firestoreUserDocument.data()!;
-    String? username = userData['username'] as String?;
-    String email = userData['email'] as String? ?? authUser?.email ?? 'Pengguna';
-    displayName = username ?? email;
+    username = userData['username'] as String? ?? "Anonim";
+    email = userData['email'] as String? ?? authUser?.email ?? 'Pengguna';
+    role = userData['role'] as String? ?? 'Reviewer';
+    displayName = username;
   }
 
   // Mengubah urutan halaman: Review Jurnal, Terpublish, Ditolak, Profil
@@ -53,43 +57,19 @@ class _ReviewerDashboardState extends State<ReviewerDashboard> {
     });
   }
 
-  Future<void> _performSignOut() async {
-    try {
-      await FirebaseAuth.instance.signOut();
-    } catch (e) {
-      print("Error signing out from ReviewerDashboard: $e");
-      if (mounted) {
-        TopNotification.show(context, 'Gagal logout: $e', type: NotificationType.error);
-      }
+  String getAppBarTitle() {
+    switch (_selectedIndex) {
+      case 0:
+        return 'Review Jurnal';
+      case 1:
+        return 'Jurnal Terpublish';
+      case 2:
+        return 'Jurnal Ditolak';
+      case 3:
+        return '$role Profile Page';
+      default:
+        return 'Dasbor Journalist';
     }
-  }
-
-  Future<void> _showLogoutConfirmationDialog() async {
-    return showDialog<void>(
-      context: context,
-      barrierDismissible: false,
-      builder: (BuildContext dialogContext) {
-        return AlertDialog(
-          title: const Text('Konfirmasi Logout'),
-          content: const Text('Apakah Anda yakin ingin keluar dari akun ini?'),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15.0)),
-          actions: <Widget>[
-            TextButton(
-              child: const Text('Batal'),
-              onPressed: () => Navigator.of(dialogContext).pop(),
-            ),
-            TextButton(
-              style: TextButton.styleFrom(foregroundColor: Colors.red),
-              child: const Text('Logout'),
-              onPressed: () {
-                Navigator.of(dialogContext).pop();
-                _performSignOut();
-              },
-            ),
-          ],
-        );
-      },
-    );
   }
 
   @override
@@ -100,15 +80,8 @@ class _ReviewerDashboardState extends State<ReviewerDashboard> {
     return Scaffold(
       backgroundColor: Colors.white,
       appBar: AppBar(
-        title: Text('$displayName, Reviewer!'),
+        title: Text(getAppBarTitle()),
         backgroundColor: theme.colorScheme.secondaryContainer, // Contoh warna tema berbeda
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.logout),
-            onPressed: _showLogoutConfirmationDialog,
-            tooltip: 'Logout',
-          ),
-        ],
       ),
       body: IndexedStack(
         index: _selectedIndex,

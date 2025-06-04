@@ -289,9 +289,13 @@ class _RegisterPageState extends State<RegisterPage> {
                 ),
                 const SizedBox(height: 20),
                 TextButton(
-                  onPressed: () {
-                    if (Navigator.canPop(context)) {
-                      Navigator.pop(context);
+                  onPressed: () { 
+                    if(isLoading) {
+                      return;
+                    } else {
+                      if (Navigator.canPop(context)) {
+                        Navigator.pop(context);
+                      }
                     }
                   },
                   child: const Text('Sudah punya akun? Login disini', style: TextStyle(fontSize: 14)),

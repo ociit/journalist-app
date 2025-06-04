@@ -167,11 +167,11 @@ class _TopNotificationWidgetState extends State<_TopNotificationWidget>
                         softWrap: true,
                       ),
                     ),
-                     // Opsional: Tombol close kecil jika diinginkan
-                    // InkWell(
-                    //   onTap: widget.onDismiss,
-                    //   child: Icon(Icons.close, color: widget.textColor, size: 20),
-                    // )
+                    //tombol untuk close notif
+                    InkWell(
+                      onTap: widget.onDismiss,
+                      child: Icon(Icons.close, color: widget.textColor, size: 20),
+                    )
                   ],
                 ),
               ),

@@ -21,6 +21,7 @@ class _JournalistDashboardState extends State<JournalistDashboard> {
   late Map<String, dynamic> userData;
   late String displayName;
   late String username;
+  late String role;
 
   final User? authUser = FirebaseAuth.instance.currentUser;
 
@@ -29,6 +30,7 @@ class _JournalistDashboardState extends State<JournalistDashboard> {
     super.initState();
     userData = widget.firestoreUserDocument.data()!;
     username = userData['username'] as String? ?? 'Pengguna Anonim';
+    role = userData['role'] as String? ?? 'Journalist';
     displayName = username; // Prioritaskan username untuk AppBar title
   }
 
@@ -39,56 +41,32 @@ class _JournalistDashboardState extends State<JournalistDashboard> {
     }
     String currentRole = userData['role'] as String? ?? 'Tidak Diketahui';
     return [
-      MyJournalsPage(currentUser: authUser!, currentUsername: username), // Indeks 0
-      PublishedJournalsPage(currentUserRole: currentRole),              // Indeks 1
-      ProfilePage(initialUserData: userData),                                   // Indeks 2 (Paling Kanan)
+      MyJournalsPage(
+        currentUser: authUser!,
+        currentUsername: username,
+      ), // Indeks 0
+      PublishedJournalsPage(currentUserRole: currentRole), // Indeks 1
+      ProfilePage(initialUserData: userData), // Indeks 2 (Paling Kanan)
     ];
+  }
+
+  String getAppBarTitle() {
+    switch (_selectedIndex) {
+      case 0:
+        return 'Jurnal Saya';
+      case 1:
+        return 'Jurnal Terpublish';
+      case 2:
+        return '$role Profile Page';
+      default:
+        return 'Dasbor Journalist';
+    }
   }
 
   void _onItemTapped(int index) {
     setState(() {
       _selectedIndex = index;
     });
-  }
-
-  Future<void> _performSignOut() async {
-    try {
-      await FirebaseAuth.instance.signOut();
-      // Wrapper akan menangani navigasi ke halaman login
-    } catch (e) {
-      print("Error signing out from dashboard: $e");
-      if (mounted) {
-        TopNotification.show(context, 'Gagal logout: $e', type: NotificationType.error);
-      }
-    }
-  }
-
-  Future<void> _showLogoutConfirmationDialog() async {
-    return showDialog<void>(
-      context: context,
-      barrierDismissible: false,
-      builder: (BuildContext dialogContext) {
-        return AlertDialog(
-          title: const Text('Konfirmasi Logout'),
-          content: const Text('Apakah Anda yakin ingin keluar dari akun ini?'),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15.0)),
-          actions: <Widget>[
-            TextButton(
-              child: const Text('Batal'),
-              onPressed: () => Navigator.of(dialogContext).pop(),
-            ),
-            TextButton(
-              style: TextButton.styleFrom(foregroundColor: Colors.red),
-              child: const Text('Logout'),
-              onPressed: () {
-                Navigator.of(dialogContext).pop();
-                _performSignOut();
-              },
-            ),
-          ],
-        );
-      },
-    );
   }
 
   @override
@@ -99,20 +77,10 @@ class _JournalistDashboardState extends State<JournalistDashboard> {
     return Scaffold(
       backgroundColor: Colors.white,
       appBar: AppBar(
-        title: Text('$displayName, Journalist!'),
-        backgroundColor: theme.colorScheme.primaryContainer, // Contoh penggunaan warna tema
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.logout),
-            onPressed: _showLogoutConfirmationDialog,
-            tooltip: 'Logout',
-          ),
-        ],
+        title: Text(getAppBarTitle()),
+        backgroundColor: theme.colorScheme.primaryContainer,
       ),
-      body: IndexedStack(
-        index: _selectedIndex,
-        children: pages,
-      ),
+      body: IndexedStack(index: _selectedIndex, children: pages),
       bottomNavigationBar: BottomNavigationBar(
         items: const <BottomNavigationBarItem>[
           BottomNavigationBarItem(
@@ -125,7 +93,8 @@ class _JournalistDashboardState extends State<JournalistDashboard> {
             activeIcon: Icon(Icons.public),
             label: 'Terpublish',
           ),
-          BottomNavigationBarItem( // Profil paling kanan
+          BottomNavigationBarItem(
+            // Profil paling kanan
             icon: Icon(Icons.person_outline),
             activeIcon: Icon(Icons.person),
             label: 'Profil',

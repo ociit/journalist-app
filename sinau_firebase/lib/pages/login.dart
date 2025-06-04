@@ -196,10 +196,14 @@ class LoginState extends State<Login> {
                 const SizedBox(height: 20),
                 TextButton(
                   onPressed: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(builder: (context) => const RegisterPage()),
-                    );
+                    if(isLoading) {
+                      return;
+                    } else {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(builder: (context) => const RegisterPage()),
+                      );
+                    }
                   },
                   child: const Text('Belum punya akun? Daftar di sini', style: TextStyle(fontSize: 14)),
                 ),

@@ -132,8 +132,10 @@ class _JournalDetailPageState extends State<JournalDetailPage> { // State class 
             icon: const Icon(Icons.copy_all_outlined),
             tooltip: 'Salin Judul & Penulis',
             onPressed: () {
-              Clipboard.setData(ClipboardData(text: "Judul: ${widget.journal.title}\nPenulis: ${widget.journal.username}"));
-              TopNotification.show(context, 'Judul & Penulis disalin ke clipboard!', type: NotificationType.info);
+              Clipboard.setData(
+                ClipboardData(
+                  text: "Judul: ${widget.journal.title}\nPenulis: ${widget.journal.username}\nContent: ${widget.journal.content}"));
+              TopNotification.show(context, 'Jurnal disalin ke clipboard!', type: NotificationType.info);
             },
           ),
         ],
