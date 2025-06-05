@@ -40,14 +40,16 @@ class _ReviewerDashboardState extends State<ReviewerDashboard> {
   // Mengubah urutan halaman: Review Jurnal, Terpublish, Ditolak, Profil
   List<Widget> _reviewerPages() {
     if (authUser == null) {
-      return [const Center(child: Text("Error: Pengguna Reviewer tidak ditemukan."))];
+      return [
+        const Center(child: Text("Error: Pengguna Reviewer tidak ditemukan.")),
+      ];
     }
     String currentRole = userData['role'] as String? ?? 'Tidak Diketahui';
     return [
-      JournalsInReviewPage(currentUser: authUser!),           // Indeks 0
+      JournalsInReviewPage(currentUser: authUser!), // Indeks 0
       PublishedJournalsPage(currentUserRole: currentRole), // Indeks 1
-      const RejectedJournalsPage(),                          // Indeks 2
-      ProfilePage(initialUserData: userData),                       // Indeks 3 (Paling Kanan)
+      const RejectedJournalsPage(), // Indeks 2
+      ProfilePage(initialUserData: userData), // Indeks 3 (Paling Kanan)
     ];
   }
 
@@ -80,13 +82,15 @@ class _ReviewerDashboardState extends State<ReviewerDashboard> {
     return Scaffold(
       backgroundColor: Colors.white,
       appBar: AppBar(
-        title: Text(getAppBarTitle()),
-        backgroundColor: theme.colorScheme.secondaryContainer, // Contoh warna tema berbeda
+        title: Text(
+          getAppBarTitle(),
+          style: TextStyle(fontWeight: FontWeight.bold),
+        ),
+        centerTitle: true,
+        backgroundColor:
+            theme.colorScheme.secondaryContainer, // Contoh warna tema berbeda
       ),
-      body: IndexedStack(
-        index: _selectedIndex,
-        children: pages,
-      ),
+      body: IndexedStack(index: _selectedIndex, children: pages),
       bottomNavigationBar: BottomNavigationBar(
         items: const <BottomNavigationBarItem>[
           BottomNavigationBarItem(
@@ -104,7 +108,8 @@ class _ReviewerDashboardState extends State<ReviewerDashboard> {
             activeIcon: Icon(Icons.unpublished),
             label: 'Ditolak',
           ),
-          BottomNavigationBarItem( // Profil paling kanan
+          BottomNavigationBarItem(
+            // Profil paling kanan
             icon: Icon(Icons.account_circle_outlined),
             activeIcon: Icon(Icons.account_circle),
             label: 'Profil',
@@ -114,7 +119,9 @@ class _ReviewerDashboardState extends State<ReviewerDashboard> {
         onTap: _onItemTapped,
         type: BottomNavigationBarType.fixed,
         backgroundColor: theme.colorScheme.surface,
-        selectedItemColor: theme.colorScheme.secondary, // Mungkin ingin warna berbeda untuk Reviewer
+        selectedItemColor: theme
+            .colorScheme
+            .secondary, // Mungkin ingin warna berbeda untuk Reviewer
         unselectedItemColor: Colors.grey[600],
         showUnselectedLabels: true,
         elevation: 8.0,

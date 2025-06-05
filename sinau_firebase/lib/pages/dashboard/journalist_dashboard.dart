@@ -77,7 +77,8 @@ class _JournalistDashboardState extends State<JournalistDashboard> {
     return Scaffold(
       backgroundColor: Colors.white,
       appBar: AppBar(
-        title: Text(getAppBarTitle()),
+        title: Text(getAppBarTitle(), style: TextStyle(fontWeight: FontWeight.bold)),
+        centerTitle: true,
         backgroundColor: theme.colorScheme.primaryContainer,
       ),
       body: IndexedStack(index: _selectedIndex, children: pages),
